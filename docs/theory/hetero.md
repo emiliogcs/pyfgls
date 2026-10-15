@@ -14,6 +14,17 @@ $\log 0$ — on a set of candidate covariates $z_t$ with an **adaptive Lasso**:
 3. the penalty level $\lambda$ and the exponent $\psi$ are chosen jointly by
    cross-validation.
 
+With $\ell_t = \log\max(\hat u_t^2,\delta^2)$,
+
+$$
+\hat\gamma = \arg\min_{\gamma_0,\gamma}\ \sum_t\big(\ell_t - \gamma_0 - z_t'\gamma\big)^2
++ \lambda\sum_j \frac{|\gamma_j|}{|\hat\gamma^{\text{ridge}}_j|^{\psi}},
+\qquad \hat v_t = \exp(\hat\gamma_0 + z_t'\hat\gamma),
+$$
+
+and the estimator is weighted least squares with weights $1/\hat v_t$:
+$\hat\beta = (X'\hat V^{-1}X)^{-1}X'\hat V^{-1}y$ with $\hat V = \operatorname{diag}(\hat v_t)$.
+
 The Lasso can handle many candidates, even more than observations, and selects a
 parsimonious model. If nothing is selected the weights are constant and FGLS reduces to
 OLS, so nothing is lost under homoskedasticity.

@@ -10,9 +10,15 @@ python benchmarks/replicate_pg26_tables.py --table general --reps 2000
 python benchmarks/replicate_gp24_tables.py --reps 2000 --T 100 200 400
 ```
 
+Runtimes on one core of an Apple M1 Pro: about 1.5 minutes for Table 1 with 10,000
+replications, 3–4 minutes for the general case with 2,000, and about 20 minutes for the
+[GP24] tables with 2,000 replications at T = 100, 200, 400. The scripts use every core by
+default (`--jobs -1`), which divides these times roughly by the number of cores; `--seed`
+fixes the draws.
+
 ## [PG26] Table 1 (T = 500, AR(1) 0.8, non-exogenous regressor)
 
-| | paper RMSE | pyfgls RMSE (5,000 reps) | paper bias | pyfgls bias |
+| Estimator | paper RMSE | pyfgls RMSE (5,000 reps) | paper bias | pyfgls bias |
 |---|---|---|---|---|
 | OLS | 0.399 | 0.398 | 0.395 | 0.394 |
 | Durbin | 0.036 | 0.037 | 0.002 | 0.001 |

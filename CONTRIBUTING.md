@@ -31,6 +31,26 @@ explaining why in the test.
 - Every stochastic routine takes `random_state` (int or `numpy.random.Generator`).
 - Do not commit the papers' PDFs; cite them instead.
 
+## The documentation page on emiliogcs.com
+
+https://emiliogcs.com/code/ is generated from this repository: `README.md`, `docs/` and
+the docstrings (the API reference follows `docs/api.md`). Edit the documentation here,
+never the generated page. After a release, or any change to the docs, update it with
+
+```bash
+scripts/sync_site.sh path/to/website-checkout   # a clone of emiliogcs/emiliogcs.github.io
+```
+
+The script builds the page in a throwaway virtual environment, runs the Quickstart
+examples so the page shows their real output, regenerates the API reference, and writes
+`code/index.html` (only the part between `<!-- pyfgls:start -->` and
+`<!-- pyfgls:end -->`; the head, menu and footer belong to the website) and its images
+into the website checkout. It commits nothing: commit there on a branch and open a pull
+request. Merging into the website's `main` publishes the page.
+
+`python scripts/build_site_page.py --update-readme` writes the same example outputs into
+`README.md`, so the README never shows stale output; the build warns when they differ.
+
 ## Continuous integration
 
 - Every push to `main` runs lint, type checks and the fast tests on Linux for
