@@ -486,6 +486,15 @@ class FGLSResults:
         """Return the formatted summary (print it, or use ``str()``)."""
         return Summary(self, alpha)
 
+    def plot_diagnostics(self, **kwargs: Any) -> Any:
+        """Diagnostic plots; see :func:`pyfgls.plotting.plot_diagnostics`.
+
+        Requires the ``plot`` extra (``pip install pyfgls[plot]``).
+        """
+        from pyfgls.plotting import plot_diagnostics
+
+        return plot_diagnostics(self, **kwargs)
+
     def __repr__(self) -> str:
         coefs = ", ".join(f"{k}={v:.4g}" for k, v in self.params.items())
         extra = ""

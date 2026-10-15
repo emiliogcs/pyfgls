@@ -40,7 +40,7 @@ from pyfgls.hetero.fgls import SKEDASTIC_METHODS, estimate_hetero
 from pyfgls.hetero.variance import HETERO_COV_TYPES
 from pyfgls.results import FGLSResults
 from pyfgls.serial.fgls import estimate_serial
-from pyfgls.serial.lagselect import Criterion, KmaxRule
+from pyfgls.serial.lagselect import Criterion, ICPenalty, KmaxRule
 from pyfgls.serial.variance import SERIAL_COV_TYPES
 
 __all__ = ["FGLS", "LassoFGLS", "SerialFGLS"]
@@ -76,7 +76,7 @@ class FGLS:
     z : "auto", list of regressor names, or array/DataFrame
         Candidate covariates of the skedastic function (unfiltered). ``"auto"`` builds
         ``{x, x^2, log x, (log x)^2, cos x, cos 2x}`` from each non-constant regressor.
-    ar_order, ic, kmax, min_lags, lagged_dep_vars, wallis_regressor
+    ar_order, ic, kmax, min_lags, ic_penalty, lagged_dep_vars, wallis_regressor
         Serial-correlation options; see :class:`SerialFGLS`.
     exog : {"predetermined", "exogenous"}
         Assumption on the regressors. Controls the default of
@@ -126,6 +126,7 @@ class FGLS:
         ic: Criterion = "bic",
         kmax: KmaxRule = None,
         min_lags: int | Literal["adjusted"] | None = None,
+        ic_penalty: ICPenalty = "order",
         lagged_dep_vars: Sequence[str | int] | str | None = None,
         wallis_regressor: str = "auto",
         exog: ExogAssumption = "predetermined",
@@ -149,6 +150,7 @@ class FGLS:
         check_choice("serial", serial, SERIAL_OPTIONS)
         check_choice("hetero", hetero, HETERO_OPTIONS)
         check_choice("ic", ic, ("bic", "aic"))
+        check_choice("ic_penalty", ic_penalty, ("order", "params"))
         check_choice("exog", exog, ("predetermined", "exogenous"))
         check_choice("lambda_rule", lambda_rule, ("min", "1se"))
         check_choice("fold_scheme", fold_scheme, ("random", "blocked"))
@@ -186,6 +188,7 @@ class FGLS:
         self.ic: Criterion = ic
         self.kmax = kmax
         self.min_lags = min_lags
+        self.ic_penalty: ICPenalty = ic_penalty
         self.wallis_regressor = wallis_regressor
         self.exog: ExogAssumption = exog
         self.first_stage_correction = (
@@ -246,6 +249,7 @@ class FGLS:
             "min_lags": self.min_lags,
             "lagged_dep_idx": self.lagged_dep_idx,
             "wallis_regressor": self.wallis_regressor,
+            "ic_penalty": self.ic_penalty,
         }
 
     def _hetero_kwargs(self) -> dict[str, Any]:
@@ -271,6 +275,7 @@ class FGLS:
             "ic": self.ic,
             "kmax": self.kmax,
             "min_lags": self.min_lags,
+            "ic_penalty": self.ic_penalty,
             "lagged_dep_vars": [d.x_names[i] for i in self.lagged_dep_idx],
             "wallis_regressor": self.wallis_regressor,
             "exog": self.exog,
@@ -509,6 +514,11 @@ class SerialFGLS(FGLS):
     min_lags : int or "adjusted", optional
         Lower bound on the order; ``"adjusted"`` uses ``ceil((ln T)**1.5)``
         ([PG26] Suppl. Lemma A.2). Default ``None``.
+    ic_penalty : {"order", "params"}
+        ``"order"`` (default, as in [PG26] eq. (14)) penalises the AR order;
+        ``"params"`` penalises every coefficient a lag adds to the Durbin regression
+        (``1 + m`` for ``m`` stochastic regressors). Use ``"params"`` with several
+        regressors: the order-based criterion then tends to select ``kmax``.
     lagged_dep_vars : list of str or int, optional
         Regressors that are lags of ``y``. The AR coefficients are then recovered by the
         Wallis ratio ([PG26] Section 4.2).
@@ -548,6 +558,7 @@ class SerialFGLS(FGLS):
         ic: Criterion = "bic",
         kmax: KmaxRule = None,
         min_lags: int | Literal["adjusted"] | None = None,
+        ic_penalty: ICPenalty = "order",
         lagged_dep_vars: Sequence[str | int] | str | None = None,
         wallis_regressor: str = "auto",
         exog: ExogAssumption = "predetermined",
@@ -566,6 +577,7 @@ class SerialFGLS(FGLS):
             ic=ic,
             kmax=kmax,
             min_lags=min_lags,
+            ic_penalty=ic_penalty,
             lagged_dep_vars=lagged_dep_vars,
             wallis_regressor=wallis_regressor,
             exog=exog,

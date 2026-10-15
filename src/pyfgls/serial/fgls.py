@@ -16,11 +16,12 @@ import numpy as np
 
 from pyfgls._linalg import FloatArray
 from pyfgls._utils import ar_roots
-from pyfgls.exceptions import InputError, NonStationaryWarning
+from pyfgls.exceptions import InputError, NonStationaryWarning, SpecificationWarning
 from pyfgls.serial.durbin import DurbinDesign, DurbinFit, durbin_design, fit_durbin
 from pyfgls.serial.filter import FilteredRegression, filtered_regression
 from pyfgls.serial.lagselect import (
     Criterion,
+    ICPenalty,
     KmaxRule,
     LagSelection,
     n_durbin_regressors,
@@ -111,6 +112,7 @@ def estimate_serial(
     lagged_dep_idx: Sequence[int] = (),
     wallis_regressor: str = "auto",
     cov_type: str = "robust",
+    ic_penalty: ICPenalty = "order",
 ) -> SerialEstimate:
     """Run the serial-correlation FGLS estimator of [PG26].
 
@@ -137,6 +139,8 @@ def estimate_serial(
         See :func:`pyfgls.serial.wallis.wallis_rho`.
     cov_type : str
         See :func:`pyfgls.serial.variance.serial_variance`.
+    ic_penalty : {"order", "params"}
+        Penalty of the information criterion (see :mod:`pyfgls.serial.lagselect`).
 
     Returns
     -------
@@ -149,9 +153,29 @@ def estimate_serial(
     if ar_order is None:
         km = resolve_kmax(kmax, T, q, has_const=has_const)
         selection = select_ar_order(
-            y, X, x_names, km, ic=ic, min_lags=resolve_min_lags(min_lags, T), y_name=y_name
+            y,
+            X,
+            x_names,
+            km,
+            ic=ic,
+            min_lags=resolve_min_lags(min_lags, T),
+            y_name=y_name,
+            ic_penalty=ic_penalty,
         )
         k = selection.order
+        if km > 0 and selection.selected_by_ic == km:
+            hint = (
+                " With many stochastic regressors the paper's criterion, which penalises only "
+                "the AR order, tends to over-select: consider ic_penalty='params'."
+                if ic_penalty == "order" and q > 2
+                else ""
+            )
+            warnings.warn(
+                f"The {ic.upper()} selected the largest order considered (kmax={km}); the "
+                f"errors may need a longer autoregression (increase kmax).{hint}",
+                SpecificationWarning,
+                stacklevel=3,
+            )
         if k > selection.kmax:  # min_lags above kmax: cap by what the sample supports
             k = resolve_kmax(k, T, q, has_const=has_const)
     else:

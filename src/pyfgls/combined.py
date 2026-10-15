@@ -49,7 +49,7 @@ from pyfgls.hetero.adaptive_lasso import PSI_GRID, CVWeights, FoldScheme, Lambda
 from pyfgls.hetero.fgls import HeteroEstimate, estimate_hetero
 from pyfgls.hetero.variance import weighted_leverage
 from pyfgls.serial.fgls import SerialEstimate, estimate_serial
-from pyfgls.serial.lagselect import Criterion, KmaxRule
+from pyfgls.serial.lagselect import Criterion, ICPenalty, KmaxRule
 from pyfgls.serial.variance import first_stage_influence, g_matrix
 
 CombinedCovType = Literal["robust", "HC0", "HC3"]
@@ -159,6 +159,7 @@ def estimate_combined(
     n_jobs: int | None = None,
     first_stage_correction: bool = True,
     cov_type: str = "robust",
+    ic_penalty: ICPenalty = "order",
 ) -> CombinedEstimate:
     """Run F-C and F-CH ([PG26] Supplement S-4); see the module docstring.
 
@@ -179,6 +180,7 @@ def estimate_combined(
         lagged_dep_idx=lagged_dep_idx,
         wallis_regressor=wallis_regressor,
         cov_type="robust",
+        ic_penalty=ic_penalty,
     )
     k = ser.order
     fr = ser.filtered

@@ -8,7 +8,13 @@ Perron, 2005):
     AIC(k) = ln(sigma2_k) + 2 k / (T - k_max),
 
 with ``sigma2_k`` the mean squared residual of the order-``k`` Durbin regression. The
-penalty counts the AR order ``k``, as in the paper.
+penalty counts the AR order ``k``, as in the paper (``ic_penalty="order"``).
+
+Each extra lag adds ``1 + m`` coefficients to the Durbin regression (``m`` stochastic
+regressors). With one regressor, as in the [PG26] simulations, this hardly matters; with
+many regressors the order-based penalty is too weak in finite samples and the
+criterion tends to pick ``k_max``. ``ic_penalty="params"`` penalises every added
+coefficient instead (``p_k ln(n)/n`` with ``p_k`` the number of lagged columns).
 
 Because the order-``k`` design is a prefix of the order-``k_max`` design, a single QR
 factorisation gives every residual sum of squares: with ``Z = QR`` and ``r = Q'y``,
@@ -31,6 +37,7 @@ from pyfgls.exceptions import InputError, InsufficientDataError, SampleSizeWarni
 from pyfgls.serial.durbin import durbin_design
 
 Criterion = Literal["bic", "aic"]
+ICPenalty = Literal["order", "params"]
 KmaxRule = int | Literal["default", "theory"] | None
 
 #: Upper bound on the number of Durbin regressors relative to the common sample.
@@ -129,6 +136,7 @@ def select_ar_order(
     ic: Criterion = "bic",
     min_lags: int | None = None,
     y_name: str = "y",
+    ic_penalty: ICPenalty = "order",
 ) -> LagSelection:
     """Choose the AR order minimising BIC/AIC over ``k = 0..kmax`` (common sample).
 
@@ -144,6 +152,8 @@ def select_ar_order(
         Lower bound on the returned order (e.g. ``ceil((ln T)^1.5)``,
         [PG26] Suppl. Lemma A.2), applied after the minimisation. It may exceed
         ``kmax``; the caller caps it by what the sample supports.
+    ic_penalty : {"order", "params"}
+        Count the AR order (paper) or all added Durbin coefficients in the penalty.
 
     Returns
     -------
@@ -161,10 +171,17 @@ def select_ar_order(
     tail = np.concatenate([np.cumsum((r**2)[::-1])[::-1], [0.0]])
     rss = np.array([rss_full + tail[design.block_end[k]] for k in range(kmax + 1)])
     sigma2 = rss / n
-    ks = np.arange(kmax + 1)
+    if ic_penalty == "order":
+        npar = np.arange(kmax + 1, dtype=np.float64)
+    elif ic_penalty == "params":
+        npar = np.array(
+            [design.block_end[k] - design.block_end[0] for k in range(kmax + 1)], dtype=np.float64
+        )
+    else:
+        raise InputError(f"ic_penalty must be 'order' or 'params', got {ic_penalty!r}.")
     penalty = math.log(n) / n if ic == "bic" else 2.0 / n
     with np.errstate(divide="ignore"):
-        values = np.log(sigma2) + ks * penalty
+        values = np.log(sigma2) + npar * penalty
     k_ic = int(np.argmin(values))
     k = k_ic
     if min_lags is not None:

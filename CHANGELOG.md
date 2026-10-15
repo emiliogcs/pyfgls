@@ -29,3 +29,9 @@ All notable changes to this project are documented here. The format follows
   screening (`check_stationarity=True`), weight-concentration diagnostics.
 - GMA estimator for MA(1) errors ([PG26] Section 5): `serial="ma1"` / `ma1=True`.
 - Formula interface `from_formula` (optional `formula` extra, formulaic).
+- `pyfgls.sklearn.FGLSRegressor` (scikit-learn estimator), `pyfgls.plotting`
+  (`plot_diagnostics`, `plot_intervals`) and `FGLSResults.plot_diagnostics()`.
+- `ic_penalty="params"` for the lag selection (penalise every Durbin coefficient a lag
+  adds) and a warning when the selected order hits `kmax`; with many regressors the
+  paper's order-based penalty tends to select `kmax`.
+- `benchmarks/performance.py`: T = 10,000, q = 10, d = 100 runs in a few seconds.
