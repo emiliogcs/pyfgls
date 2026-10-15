@@ -2,10 +2,16 @@
 
 ## Install
 
+`pyfgls` is on [PyPI](https://pypi.org/project/pyfgls/) and requires Python 3.10 or newer.
+
 ```bash
 pip install pyfgls                    # core
 pip install "pyfgls[formula,plot]"    # formula interface and diagnostic plots
+pip install --upgrade pyfgls          # update to the latest release
 ```
+
+If `pip` reports "No matching distribution found for pyfgls", it is running on Python 3.9
+or older; see the [FAQ](faq.md).
 
 ## Serial correlation
 

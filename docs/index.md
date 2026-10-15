@@ -15,6 +15,12 @@
 
 and their combination ([PG26] Supplement S-4).
 
+Install it from [PyPI](https://pypi.org/project/pyfgls/) (Python 3.10 or newer):
+
+```bash
+pip install pyfgls
+```
+
 ```python
 import pyfgls as pf
 

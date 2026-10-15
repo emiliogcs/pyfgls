@@ -6,9 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- README and documentation: install from PyPI (`pip install pyfgls`), PyPI badges, and a
+  note on the "No matching distribution found" error under Python 3.9 or older. The
+  README uses absolute links so that it renders correctly on PyPI.
+- `CONTRIBUTING.md`: release procedure.
+
 ## [0.1.0] - 2026-10-15
 
-First release.
+First release, published on [PyPI](https://pypi.org/project/pyfgls/0.1.0/).
 
 ### Added
 - Project skeleton: packaging (hatchling, PEP 621), CI, pre-commit, typing marker.
