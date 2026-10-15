@@ -3,8 +3,10 @@
 ## Install
 
 ```bash
-pip install pyfgls                    # core
-pip install "pyfgls[formula,plot]"    # formula interface and diagnostic plots
+pip install git+https://github.com/emiliogcs/pyfgls   # from GitHub, until it is on PyPI
+pip install pyfgls                                     # core, once released on PyPI
+pip install "pyfgls[formula,plot]"                     # formula interface and diagnostic plots
+python -c "import pyfgls; print(pyfgls.__version__)"   # check the installation
 ```
 
 ## Serial correlation

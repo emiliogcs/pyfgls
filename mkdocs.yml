@@ -63,7 +63,9 @@ nav:
   - How-to:
       - Lagged dependent variables: howto/lagged-dependent.md
       - Many candidate covariates: howto/many-covariates.md
+      - Reading summary(): howto/reading-summary.md
       - Interpreting nonexogeneity_share: howto/nonexogeneity.md
+      - Reproducibility: howto/reproducibility.md
   - Replication: replication.md
   - FAQ: faq.md
   - API reference: api.md

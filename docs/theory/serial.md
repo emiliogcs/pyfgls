@@ -28,13 +28,27 @@ $$
 
 whose regressors are all uncorrelated with $e_t$. The order $k$ is chosen by BIC, with
 every candidate order estimated on the same sample $t = k_{\max}+1,\dots,T$ so that the
-criteria are comparable. Lagged deterministic terms (constant, trends, seasonal dummies)
+criteria are comparable:
+
+$$
+\mathrm{BIC}(k) = \ln\hat\sigma_k^2 + k\,\frac{\ln(T-k_{\max})}{T-k_{\max}},
+\qquad k = 0,\dots,k_{\max},
+$$
+
+with $\hat\sigma_k^2$ the mean squared residual of the order-$k$ Durbin regression. Lagged deterministic terms (constant, trends, seasonal dummies)
 are collinear with their contemporaneous values and are dropped automatically.
 
 ## FGLS and its variance
 
 The data are quasi-differenced with $\hat\rho_1,\dots,\hat\rho_{k^*}$ and OLS is applied
-(eq. (15)). Because the filter is estimated, the variance of $\hat\beta$ has two parts
+(eq. (15)):
+
+$$
+\tilde y_t = y_t - \sum_{j=1}^{k^*}\hat\rho_j y_{t-j}, \qquad
+\tilde x_t = x_t - \sum_{j=1}^{k^*}\hat\rho_j x_{t-j}, \qquad
+\hat\beta = \Big(\sum_{t>k^*}\tilde x_t\tilde x_t'\Big)^{-1}\sum_{t>k^*}\tilde x_t\tilde y_t .
+$$
+ Because the filter is estimated, the variance of $\hat\beta$ has two parts
 (Theorem 2): the usual GLS term and a correction for the first-stage estimation of
 $\rho$, which involves $g_j = E[\tilde x_t u_{t-j}]$. Under exogeneity $g_j = 0$ and the
 correction vanishes (the naive variance, eq. (27)); otherwise it does not, and the

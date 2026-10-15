@@ -48,14 +48,33 @@ print(res.summary())
 ## Install
 
 ```bash
-pip install pyfgls                         # once released on PyPI
-pip install "pyfgls[formula,plot]"         # + formula interface and diagnostic plots
-pip install -e ".[dev]"                    # development install from a clone
+pip install git+https://github.com/emiliogcs/pyfgls       # from GitHub, until it is on PyPI
+pip install pyfgls                                         # once released on PyPI
+pip install "pyfgls[formula,plot]"                         # + formula interface and diagnostic plots
+pip install -e ".[dev]"                                    # development install from a clone
 ```
+
+Until the PyPI release, the extras install from GitHub with
+`pip install "pyfgls[formula,plot] @ git+https://github.com/emiliogcs/pyfgls"`.
 
 Python ≥ 3.10. Core dependencies: NumPy, SciPy, pandas, scikit-learn, joblib. Optional:
 `formulaic` (`formula` extra), `matplotlib` (`plot` extra), `statsmodels` (only used in the
 test suite).
+
+A virtual environment keeps these dependencies apart from other projects:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+python -m pip install --upgrade pip
+pip install git+https://github.com/emiliogcs/pyfgls
+```
+
+Check the installation; this prints the installed version:
+
+```bash
+python -c "import pyfgls; print(pyfgls.__version__)"
+```
 
 ---
 
@@ -76,6 +95,16 @@ test suite).
 and `hetero=None` the heteroskedasticity correction, so `FGLS(y, X, hetero=None)` is the
 same estimator as `SerialFGLS(y, X)` and `FGLS(y, X, serial=None)` the same as
 `LassoFGLS(y, X)`.
+
+Compared with the usual alternatives:
+
+| Instead of | Use | Why |
+|---|---|---|
+| OLS + HAC standard errors | `SerialFGLS` | OLS is inconsistent when the regressors respond to past shocks (pre-determined, not exogenous); FGLS stays consistent, is more precise, and its intervals cover better with persistent errors. |
+| Cochrane–Orcutt | `SerialFGLS` | Cochrane–Orcutt estimates the AR filter from OLS residuals and inherits their inconsistency; FGLS estimates it from the Durbin regression. |
+| The textbook GLS variance (`cov_type="naive"`) | the default `cov_type="robust"` | The naive variance is valid only for exogenous regressors; the robust one ([PG26] eq. 29) is valid for pre-determined ones too and costs nothing when they are exogenous. |
+| OLS + HC standard errors | `LassoFGLS` | Never noticeably worse than OLS in the [GP24] designs, much more precise under heteroskedasticity. |
+| Parametric WLS (`"wls_s1"`, `"wls_s2"`) or SVR (`"svr"`) | the adaptive Lasso (default) | WLS can be worse than OLS when the variance driver is not among its covariates; SVR is competitive in MSE but its intervals cover less accurately. |
 <!-- --8<-- [end:choose] -->
 
 ---
@@ -192,14 +221,13 @@ x1             0.9927     0.0258     38.449      0.000     0.9421     1.0433
 Notes:
 [1] Covariance: [PG26] eq. (29), robust to non-exogenous (pre-determined) regressors.
 [2] Collinear lagged columns dropped from the Durbin regression: L1.const
-
-                   OLS  FGLS (serial)
-const coef      0.9132         0.8768
-      std err   0.1315         0.1951
-      CI width  0.5154         0.7646
-x1    coef      1.4125         0.9927
-      std err   0.0676         0.0258
-      CI width  0.2650         0.1012
+                     OLS  FGLS (serial)
+const coef      0.913171       0.876773
+      std err   0.131491       0.195064
+      CI width  0.515434       0.764637
+x1    coef      1.412530       0.992690
+      std err   0.067605       0.025818
+      CI width  0.265006       0.101206
 ```
 
 The true slope is 1: OLS is off by 0.41 (it is inconsistent here), FGLS is on target with
@@ -208,6 +236,7 @@ an interval less than half as wide.
 ### 2. Heteroskedasticity of unknown form
 
 ```python
+import pyfgls as pf
 from pyfgls.simulate import hetero_dgp
 
 sim = hetero_dgp(400, skedastic="x2", random_state=1)  # Var(u | x) = x²
@@ -237,6 +266,7 @@ Notes:
 ### 3. Both problems
 
 ```python
+import pyfgls as pf
 from pyfgls.simulate import combined_dgp
 
 sim = combined_dgp(300, ar=(0.5,), skedastic="x2", random_state=2)
@@ -246,18 +276,97 @@ print(res.compare_stages())  # F-C: serial correction only; F-CH: both
 
 ```text
                 F-C (serial)  F-CH (serial+hetero)
-const coef            0.8496                0.7168
-      std err         0.3644                0.2998
-      CI width        1.4285                1.1750
-x1    coef            1.0020                1.0441
-      std err         0.1683                0.1335
-      CI width        0.6596                0.5234
+const coef          0.849550              0.716812
+      std err       0.364408              0.299758
+      CI width      1.428453              1.175031
+x1    coef          1.001988              1.044079
+      std err       0.168275              0.133527
+      CI width      0.659625              0.523416
 ```
 
 ![OLS-HAC vs FGLS intervals](docs/assets/intervals.png)
 
 *Persistent AR(2) errors, T = 200: the OLS-HAC interval is centred far from the truth and
 is about three times as wide as the FGLS interval.*
+
+### 4. Robust versus naive intervals
+
+When a regressor responds to past shocks, the textbook GLS variance ([PG26] eq. 27)
+ignores that the AR filter was estimated and its intervals are too short. The default
+variance (eq. 29) accounts for it.
+
+```python
+import pyfgls as pf
+from pyfgls.simulate import serial_dgp
+
+# AR(1) errors (rho = 0.5) and a regressor x_t = 0.5 x_{t-1} + v_t + e_{t-1}
+# that responds to last period's shock: pre-determined, not exogenous
+sim = serial_dgp(200, ar=(0.5,), rho_x=0.5, gamma=1.0, burn=100, random_state=3)
+model = pf.SerialFGLS(sim.y, sim.X)
+robust = model.fit()  # default: [PG26] eq. (29)
+naive = model.fit(cov_type="naive")  # eq. (27): valid for exogenous regressors only
+print(f"nonexogeneity_share = {robust.nonexogeneity_share:.3f}")
+print(pf.compare([naive, robust], names=["naive", "robust"]))
+```
+
+```text
+nonexogeneity_share = 0.342
+                   naive    robust
+const coef      1.219315  1.219315
+      std err   0.144750  0.146042
+      CI width  0.567409  0.572474
+x1    coef      0.987909  0.987909
+      std err   0.052561  0.067858
+      CI width  0.206037  0.266000
+```
+
+The estimates are identical; only the variance differs. For the slope the robust standard
+error is about 30% larger: the naive interval would under-cover. With exogenous regressors
+the share is close to 0 and the two coincide.
+
+### 5. Formula interface
+
+With the `formula` extra, models can be written as formulas on a pandas DataFrame; `lag()`
+creates lags, and the names and the (time) index are carried into the results.
+
+```python
+import pandas as pd
+import pyfgls as pf
+from pyfgls.simulate import serial_dgp
+
+sim = serial_dgp(240, burn=100, random_state=4)
+df = pd.DataFrame(
+    {"y": sim.y, "x": sim.X[:, 1]},
+    index=pd.period_range("2005-01", periods=240, freq="M"),
+)
+res = pf.SerialFGLS.from_formula("y ~ x + lag(x)", data=df, missing="drop").fit()
+print(res.summary())
+```
+
+```text
+==============================================================================
+                           FGLS Regression Results
+==============================================================================
+Dep. variable:                       y  Inference:                      normal
+Method:                  FGLS (serial)  AR order k*:        1  [BIC (kmax=12)]
+Observations:                      239  AR coefs rho:                   0.8244
+Effective obs.:                    238  Non-exog. share:                 0.064
+Covariance:                     robust
+------------------------------------------------------------------------------
+                 coef    std err          z      P>|z|      0.025      0.975
+------------------------------------------------------------------------------
+const          1.6427     0.3616      4.543      0.000     0.9340     2.3514
+x              0.9894     0.0413     23.971      0.000     0.9085     1.0703
+lag(x)        -0.0072     0.0411     -0.175      0.861    -0.0878     0.0734
+==============================================================================
+Notes:
+[1] Covariance: [PG26] eq. (29), robust to non-exogenous (pre-determined) regressors.
+[2] Collinear lagged columns dropped from the Durbin regression: L1.const, L1.x
+```
+
+`missing="drop"` drops the first month, which `lag(x)` leaves empty. Note [2]: the Durbin
+regression already contains the lags of every regressor, so the lag of the constant and
+`L1.x`, which duplicates `lag(x)`, are dropped there.
 
 ---
 
@@ -560,4 +669,7 @@ If you use `pyfgls`, please cite the papers that the methods come from:
 }
 ```
 
-See also [`CITATION.cff`](CITATION.cff). License: MIT © Emilio González-Coya.
+See also [`CITATION.cff`](CITATION.cff) to cite the software itself. License: MIT ©
+Emilio González-Coya. Questions and bug reports:
+[GitHub Issues](https://github.com/emiliogcs/pyfgls/issues). Changes between versions:
+[`CHANGELOG.md`](CHANGELOG.md).
