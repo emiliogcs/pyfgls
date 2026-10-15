@@ -399,6 +399,20 @@ class FGLSResults:
         )
 
     # ----------------------------------------------------------------- comparisons
+    def compare_ols(self, *, cov_type: str | None = None, alpha: float = 0.05) -> pd.DataFrame:
+        """Side-by-side table of this fit and OLS on the same data.
+
+        The OLS standard errors are HAC (Andrews quadratic-spectral kernel, automatic
+        bandwidth) for fits that correct serial correlation and HC3 otherwise; pass
+        ``cov_type`` (``"HAC"``, ``"NW"``, ``"HC0"``..``"HC3"``) to override.
+        """
+        from pyfgls.benchmarks import ols
+
+        if cov_type is None:
+            cov_type = "HAC" if self.serial is not None else "HC3"
+        base = ols(self.data, cov_type=cov_type, use_t=self.use_t)  # type: ignore[arg-type]
+        return compare([base, self], alpha=alpha)
+
     @property
     def stage_serial(self) -> FGLSResults | None:
         """The serial-correlation-only stage (F-C) of a combined fit."""

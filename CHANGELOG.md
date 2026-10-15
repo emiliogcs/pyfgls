@@ -23,3 +23,5 @@ All notable changes to this project are documented here. The format follows
   known variances, eq. (6)–(8) bias-corrected sandwich; unified `FGLS` class.
 - Combined serial + heteroskedasticity estimator (F-C / F-CH, [PG26] Supplement
   S-4) with an optional first-stage correction; wild and sieve bootstrap covariances.
+- Benchmarks: OLS with HAC (Andrews QS, Newey–West) or HC0–HC3, Cochrane–Orcutt,
+  Durbin, infeasible GLS, hybrid GLS; `compare_ols()`; statsmodels cross-checks.

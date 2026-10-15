@@ -9,7 +9,7 @@ Implements the FGLS procedures of
   Econometric Methods* 13(1), 29–48 — heteroskedasticity.
 """
 
-from pyfgls import exceptions, simulate
+from pyfgls import benchmarks, exceptions, simulate
 from pyfgls._version import __version__
 from pyfgls.models import FGLS, LassoFGLS, SerialFGLS
 from pyfgls.results import FGLSResults, compare
@@ -20,6 +20,7 @@ __all__ = [
     "LassoFGLS",
     "SerialFGLS",
     "__version__",
+    "benchmarks",
     "compare",
     "exceptions",
     "simulate",
