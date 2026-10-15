@@ -17,3 +17,7 @@ All notable changes to this project are documented here. The format follows
 - `FGLSResults` with summary, coefficient table, Wald tests, JSON export; `compare()`.
 - `pyfgls.simulate`: data-generating processes of both papers.
 - Monte Carlo acceptance tests replicating [PG26] Table 1 and Tables 2–5 cells.
+- `LassoFGLS`: heteroskedasticity FGLS of González-Coya & Perron (2024) — candidate
+  dictionary, adaptive Lasso (ridge first step, joint CV over lambda and psi with
+  common folds, exact LARS path), SVR and Romano–Wolf WLS-S1/S2 skedastic fits,
+  known variances, eq. (6)–(8) bias-corrected sandwich; unified `FGLS` class.

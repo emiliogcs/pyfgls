@@ -399,6 +399,16 @@ class FGLSResults:
         )
 
     # ----------------------------------------------------------------- comparisons
+    @property
+    def stage_serial(self) -> FGLSResults | None:
+        """The serial-correlation-only stage (F-C) of a combined fit."""
+        return self.stages.get("serial")
+
+    @property
+    def stage_hetero(self) -> FGLSResults | None:
+        """The fully corrected stage (F-CH) of a combined fit: this result."""
+        return self if self.stages else None
+
     def compare_stages(self, alpha: float = 0.05) -> pd.DataFrame:
         """Compare the intermediate estimators (e.g. F-C vs F-CH) with this fit."""
         if not self.stages:
@@ -530,11 +540,12 @@ class Summary:
         left, right = hdr[:half], hdr[half:]
         for i in range(half):
             lk, lv = left[i]
-            cell_l = f"{lk + ':':<18}{lv:>19}"
+            lv = lv if len(lv) <= 22 else lv[:19] + "..."
+            cell_l = f"{lk + ':':<16}{lv:>22}"
             if i < len(right):
                 rk, rv = right[i]
-                rv = rv if len(rv) <= 19 else rv[:16] + "..."
-                cell_r = f"{rk + ':':<19}{rv:>19}"
+                rv = rv if len(rv) <= 20 else rv[:17] + "..."
+                cell_r = f"{rk + ':':<18}{rv:>20}"
             else:
                 cell_r = ""
             lines.append(f"{cell_l}  {cell_r}".rstrip())

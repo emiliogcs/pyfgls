@@ -64,6 +64,8 @@ class RegressionData:
     const_col: int | None
     has_implicit_const: bool
     dropped_rows: tuple[Any, ...] = field(default=())
+    extra: FloatArray | None = None
+    extra_names: tuple[str, ...] = ()
 
     @property
     def nobs(self) -> int:
@@ -270,6 +272,8 @@ def prepare_data(
     time_series: bool = True,
     allow_gaps: bool = False,
     warn_no_const: bool = True,
+    extra: Any = None,
+    extra_label: str = "z",
 ) -> RegressionData:
     """Validate and convert ``(y, X)``.
 
@@ -290,6 +294,11 @@ def prepare_data(
         Accept a date/period index with gaps (lags are then positional).
     warn_no_const : bool
         Warn when ``X`` has no intercept.
+    extra : array_like or DataFrame, optional
+        Additional variables with ``T`` rows (e.g. candidate covariates ``z``) that
+        take part in the missing-value handling but not in the rank checks.
+    extra_label : str
+        Name used for ``extra`` in error messages and default column names.
 
     Returns
     -------
@@ -324,13 +333,29 @@ def prepare_data(
     if x_names is None:
         x_names = _default_names(X_arr)
 
+    E_arr: FloatArray | None = None
+    e_names: list[str] = []
+    if extra is not None:
+        E_arr, e_names_opt, e_index = _convert_X(extra)
+        if E_arr.shape[0] != y_arr.shape[0]:
+            raise InputError(
+                f"{extra_label} has {E_arr.shape[0]} rows but y has {y_arr.shape[0]} observations."
+            )
+        if e_index is not None and index is not None and not e_index.equals(index):
+            raise InputError(f"{extra_label} and y/X have different indexes; align them first.")
+        e_names = e_names_opt or [f"{extra_label}{j + 1}" for j in range(E_arr.shape[1])]
+
     # ---- missing / non-finite values
-    if np.isinf(y_arr).any() or np.isinf(X_arr).any():
-        bad = np.flatnonzero(np.isinf(y_arr) | np.isinf(X_arr).any(axis=1))
+    inf_rows = np.isinf(y_arr) | np.isinf(X_arr).any(axis=1)
+    nan_rows = np.isnan(y_arr) | np.isnan(X_arr).any(axis=1)
+    if E_arr is not None:
+        inf_rows |= np.isinf(E_arr).any(axis=1)
+        nan_rows |= np.isnan(E_arr).any(axis=1)
+    if inf_rows.any():
+        bad = np.flatnonzero(inf_rows)
         raise MissingDataError(
             f"Infinite values found at {_format_locations(index, bad)}. Replace them first."
         )
-    nan_rows = np.isnan(y_arr) | np.isnan(X_arr).any(axis=1)
     dropped: tuple[Any, ...] = ()
     if nan_rows.any():
         bad = np.flatnonzero(nan_rows)
@@ -359,6 +384,8 @@ def prepare_data(
         drop_pos = np.flatnonzero(~keep)
         dropped = tuple(index[drop_pos]) if index is not None else tuple(drop_pos.tolist())
         y_arr, X_arr = y_arr[keep], X_arr[keep]
+        if E_arr is not None:
+            E_arr = E_arr[keep]
         if index is not None:
             index = index[keep]
 
@@ -411,6 +438,8 @@ def prepare_data(
         const_col=const_col,
         has_implicit_const=implicit,
         dropped_rows=dropped,
+        extra=None if E_arr is None else np.ascontiguousarray(E_arr),
+        extra_names=tuple(e_names),
     )
 
 

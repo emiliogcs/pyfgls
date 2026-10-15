@@ -11,11 +11,13 @@ Implements the FGLS procedures of
 
 from pyfgls import exceptions, simulate
 from pyfgls._version import __version__
-from pyfgls.models import SerialFGLS
+from pyfgls.models import FGLS, LassoFGLS, SerialFGLS
 from pyfgls.results import FGLSResults, compare
 
 __all__ = [
+    "FGLS",
     "FGLSResults",
+    "LassoFGLS",
     "SerialFGLS",
     "__version__",
     "compare",

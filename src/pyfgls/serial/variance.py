@@ -141,6 +141,23 @@ def influence_weights(Z: FloatArray, J: FloatArray) -> FloatArray:
     return np.asarray(n * (JRinv @ Q.T), dtype=np.float64)
 
 
+def first_stage_influence(design: DurbinDesign, J: FloatArray | None = None) -> FloatArray:
+    """First-stage influence weights ``C`` (k x n) of the AR coefficients.
+
+    ``rho_hat - rho ~ n^{-1} C e`` with ``C_t = Sigma^{-1} psi_t`` in the standard case
+    (``J is None``) and ``C = J (Z'Z/n)^{-1} Z'`` in general.
+    """
+    k = design.order
+    n = design.nobs
+    if k == 0:
+        return np.zeros((0, n))
+    if J is None:
+        Psi = psi_residuals(design, k)
+        Sigma = Psi.T @ Psi / n
+        return np.asarray(inv_psd(Sigma, name="variance of psi_t (eq. 29)") @ Psi.T)
+    return influence_weights(design.prefix(k), J)
+
+
 def _hc_weights(cov_type: str, ehat: FloatArray, Xf: FloatArray) -> FloatArray:
     n, q = int(Xf.shape[0]), int(Xf.shape[1])
     e2: FloatArray = ehat**2
