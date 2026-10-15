@@ -21,3 +21,5 @@ All notable changes to this project are documented here. The format follows
   dictionary, adaptive Lasso (ridge first step, joint CV over lambda and psi with
   common folds, exact LARS path), SVR and Romano–Wolf WLS-S1/S2 skedastic fits,
   known variances, eq. (6)–(8) bias-corrected sandwich; unified `FGLS` class.
+- Combined serial + heteroskedasticity estimator (F-C / F-CH, [PG26] Supplement
+  S-4) with an optional first-stage correction; wild and sieve bootstrap covariances.
