@@ -120,7 +120,9 @@ def _eq29_by_hand(y, X, k):
     # Durbin regression of order k on t = k..T-1
     rows = np.arange(k, T)
     Zy = np.column_stack([y[rows - j] for j in range(1, k + 1)])
-    W = np.column_stack([X[rows]] + [X[rows - j][:, 1:] for j in range(1, k + 1)])  # drop lagged const
+    W = np.column_stack(
+        [X[rows]] + [X[rows - j][:, 1:] for j in range(1, k + 1)]
+    )  # drop lagged const
     coef = np.linalg.lstsq(np.column_stack([Zy, W]), y[rows], rcond=None)[0]
     rho = coef[:k]
     Xf = X[rows] - sum(rho[j - 1] * X[rows - j] for j in range(1, k + 1))
@@ -338,9 +340,7 @@ def test_results_are_labelled(fitted):
     assert len(fitted.resid) == 300
     assert len(fitted.resid_final) == 300 - fitted.ar_order
     assert fitted.resid_final.index[0] == fitted.resid.index[fitted.ar_order]
-    np.testing.assert_allclose(
-        fitted.fittedvalues + fitted.resid, fitted.data.y, rtol=1e-12
-    )
+    np.testing.assert_allclose(fitted.fittedvalues + fitted.resid, fitted.data.y, rtol=1e-12)
     assert fitted.conf_int().shape == (2, 2)
     assert fitted.cov_params().shape == (2, 2)
     assert fitted.n_eff == 300 - fitted.ar_order
