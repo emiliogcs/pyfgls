@@ -1,0 +1,152 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyfgls"
+dynamic = ["version"]
+description = "Feasible GLS for time series regression and heteroskedasticity of unknown form (Perron & González-Coya 2026; González-Coya & Perron 2024)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Emilio González-Coya", email = "emiliogc@bu.edu" }]
+keywords = [
+  "econometrics",
+  "feasible generalized least squares",
+  "FGLS",
+  "time series",
+  "serial correlation",
+  "heteroskedasticity",
+  "lasso",
+  "regression",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Typing :: Typed",
+]
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "pandas>=1.5",
+  "scikit-learn>=1.2",
+  "joblib>=1.2",
+]
+
+[project.optional-dependencies]
+formula = ["formulaic>=1.0"]
+plot = ["matplotlib>=3.6"]
+stats = ["statsmodels>=0.14"]
+dev = [
+  "pytest>=7.4",
+  "pytest-xdist>=3.3",
+  "pytest-cov>=4.1",
+  "hypothesis>=6.80",
+  "ruff>=0.5",
+  "mypy>=1.8",
+  "pandas-stubs",
+  "scipy-stubs; python_version >= '3.10'",
+  "pre-commit>=3.5",
+  "statsmodels>=0.14",
+  "formulaic>=1.0",
+  "matplotlib>=3.6",
+  "nbmake>=1.4",
+  "ipykernel",
+]
+docs = [
+  "mkdocs-material>=9.5",
+  "mkdocstrings[python]>=0.24",
+  "matplotlib>=3.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/emiliogcs/pyfgls"
+Source = "https://github.com/emiliogcs/pyfgls"
+Issues = "https://github.com/emiliogcs/pyfgls/issues"
+Changelog = "https://github.com/emiliogcs/pyfgls/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/pyfgls/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/pyfgls", "tests", "README.md", "LICENSE", "CITATION.cff", "CHANGELOG.md"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyfgls"]
+
+# ---------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+extend-exclude = ["examples/*.ipynb", "CLAUDE.md"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W", "F", "I", "UP", "B", "SIM", "NPY", "RUF", "C4", "PIE", "PT", "RET", "TID", "D",
+]
+ignore = [
+  "E501",    # long lines are handled by the formatter; equations in comments may run long
+  "D105",    # magic-method docstrings
+  "D107",    # __init__ docstrings (documented on the class)
+  "D203", "D213",
+  "RUF001", "RUF002", "RUF003",  # unicode Greek letters in strings/comments are intended
+  "RET504",
+  "PT011",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "B018"]
+"conftest.py" = ["D"]
+"benchmarks/**" = ["D"]
+"docs/**" = ["D"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src/pyfgls"]
+warn_unreachable = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "joblib.*", "statsmodels.*", "formulaic.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+minversion = "7.4"
+testpaths = ["tests", "src/pyfgls"]
+addopts = "-ra --strict-markers --doctest-modules"
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS", "NUMBER"]
+markers = [
+  "slow: Monte Carlo acceptance tests replicating the papers' tables (run with --runslow)",
+]
+filterwarnings = [
+  "error::RuntimeWarning:pyfgls.*",
+]
+
+[tool.coverage.run]
+source = ["pyfgls"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError", "\\.\\.\\."]

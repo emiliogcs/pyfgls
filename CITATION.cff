@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: >-
+  If you use pyfgls, please cite the software and the papers whose methods it implements.
+title: "pyfgls: Feasible GLS for Python"
+type: software
+authors:
+  - family-names: González-Coya
+    given-names: Emilio
+    email: emiliogc@bu.edu
+    affiliation: Boston University
+repository-code: "https://github.com/emiliogcs/pyfgls"
+license: MIT
+version: 0.1.0
+keywords:
+  - econometrics
+  - feasible generalized least squares
+  - serial correlation
+  - heteroskedasticity
+  - lasso
+preferred-citation:
+  type: article
+  title: "Feasible GLS for time series regression"
+  authors:
+    - family-names: Perron
+      given-names: Pierre
+    - family-names: González-Coya
+      given-names: Emilio
+  journal: "Journal of Econometrics"
+  volume: 258
+  start: 106346
+  year: 2026
+references:
+  - type: article
+    title: "Estimation in the presence of heteroskedasticity of unknown form: a Lasso-based approach"
+    authors:
+      - family-names: González-Coya
+        given-names: Emilio
+      - family-names: Perron
+        given-names: Pierre
+    journal: "Journal of Econometric Methods"
+    volume: 13
+    issue: 1
+    start: 29
+    end: 48
+    year: 2024

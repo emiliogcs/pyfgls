@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv*/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Notebooks / docs
+.ipynb_checkpoints/
+site/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Paper PDFs are copyrighted: never commit them
+*.pdf
