@@ -8,3 +8,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 - Project skeleton: packaging (hatchling, PEP 621), CI, pre-commit, typing marker.
+- Input validation (time index, gaps, missing values, rank checks), QR-based linear
+  algebra, warning/exception hierarchy, lag utilities.
+- `SerialFGLS`: serial-correlation FGLS of Perron & González-Coya (2026) — Durbin
+  regression with BIC/AIC lag selection on a common sample, quasi-differenced OLS,
+  naive (eq. 27) and exogeneity-robust (eqs. 28–29) variances, HC variants, Wallis
+  recovery for lagged dependent variables, AR-root checks, `nonexogeneity_share`.
+- `FGLSResults` with summary, coefficient table, Wald tests, JSON export; `compare()`.
+- `pyfgls.simulate`: data-generating processes of both papers.
+- Monte Carlo acceptance tests replicating [PG26] Table 1 and Tables 2–5 cells.

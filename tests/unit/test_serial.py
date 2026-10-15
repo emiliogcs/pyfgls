@@ -116,7 +116,7 @@ def test_deterministic_regressors_do_not_crash_or_change_rho():
 # --------------------------------------------------------------------- variances
 def _eq29_by_hand(y, X, k):
     """Independent implementation of [PG26] eqs. (28)-(29)."""
-    T, q = X.shape
+    T = X.shape[0]
     # Durbin regression of order k on t = k..T-1
     rows = np.arange(k, T)
     Zy = np.column_stack([y[rows - j] for j in range(1, k + 1)])
