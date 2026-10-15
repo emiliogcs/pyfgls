@@ -130,6 +130,12 @@ show_error_codes = true
 module = ["sklearn.*", "joblib.*", "statsmodels.*", "formulaic.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# pandas-stubs types many Series/DataFrame constructors and methods as returning Any;
+# the presentation-layer modules return pandas objects throughout.
+module = ["pyfgls.results", "pyfgls.models", "pyfgls.benchmarks", "pyfgls.diagnostics"]
+warn_return_any = false
+
 # ---------------------------------------------------------------- pytest
 [tool.pytest.ini_options]
 minversion = "7.4"
