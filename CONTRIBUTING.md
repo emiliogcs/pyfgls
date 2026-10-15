@@ -58,3 +58,23 @@ request. Merging into the website's `main` publishes the page.
 - Pull requests, tags and manual runs (`workflow_dispatch`) also run the fast tests on
   macOS and Windows.
 - The slow Monte Carlo suite runs nightly on Linux and on demand.
+
+## Releasing
+
+Releases are published to [PyPI](https://pypi.org/project/pyfgls/) by the `Release`
+workflow through trusted publishing (no API tokens are stored in the repository).
+
+1. Bump the version in `src/pyfgls/_version.py` and `CITATION.cff`, and move the
+   `[Unreleased]` entries of `CHANGELOG.md` under the new version with today's date.
+2. Commit, then tag and push:
+   `git tag -a vX.Y.Z -m "pyfgls X.Y.Z" && git push origin main vX.Y.Z`.
+   The tag push runs the `Release` workflow, which builds the wheel and sdist and checks
+   them with `twine check --strict`; it does not publish.
+3. Optional dry run: **Actions → Release → Run workflow**, choose the tag and
+   `testpypi`, then test the upload in a fresh virtual environment with
+   `pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ pyfgls==X.Y.Z`.
+4. Publish: **Actions → Release → Run workflow**, choose the tag and `pypi`, and approve
+   the deployment when the run asks for it.
+
+PyPI never accepts the same version number twice, even after a release is deleted. To
+correct a release, publish a new version and, if needed, yank the faulty one on PyPI.

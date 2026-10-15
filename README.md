@@ -2,8 +2,9 @@
 
 [![CI](https://github.com/emiliogcs/pyfgls/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliogcs/pyfgls/actions/workflows/ci.yml)
 [![Docs](https://github.com/emiliogcs/pyfgls/actions/workflows/docs.yml/badge.svg)](https://github.com/emiliogcs/pyfgls/actions/workflows/docs.yml)
-[![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)](https://github.com/emiliogcs/pyfgls)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/pyfgls.svg)](https://pypi.org/project/pyfgls/)
+[![Python](https://img.shields.io/pypi/pyversions/pyfgls.svg)](https://pypi.org/project/pyfgls/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/emiliogcs/pyfgls/blob/main/LICENSE)
 [![Typed](https://img.shields.io/badge/typing-mypy%20strict-informational)](https://mypy-lang.org/)
 
 `pyfgls` implements the feasible generalized least squares (FGLS) estimators of
@@ -47,27 +48,26 @@ print(res.summary())
 
 ## Install
 
+`pyfgls` is on [PyPI](https://pypi.org/project/pyfgls/):
+
 ```bash
-pip install git+https://github.com/emiliogcs/pyfgls       # from GitHub, until it is on PyPI
-pip install pyfgls                                         # once released on PyPI
-pip install "pyfgls[formula,plot]"                         # + formula interface and diagnostic plots
-pip install -e ".[dev]"                                    # development install from a clone
+pip install pyfgls                    # core
+pip install "pyfgls[formula,plot]"    # + formula interface and diagnostic plots
+pip install --upgrade pyfgls          # update to the latest release
 ```
 
-Until the PyPI release, the extras install from GitHub with
-`pip install "pyfgls[formula,plot] @ git+https://github.com/emiliogcs/pyfgls"`.
-
-Python ≥ 3.10. Core dependencies: NumPy, SciPy, pandas, scikit-learn, joblib. Optional:
-`formulaic` (`formula` extra), `matplotlib` (`plot` extra), `statsmodels` (only used in the
-test suite).
+Requires **Python 3.10 or newer**; tested on 3.10–3.13 on Linux, macOS and Windows. Core
+dependencies: NumPy, SciPy, pandas, scikit-learn, joblib. Optional: `formulaic`
+(`formula` extra), `matplotlib` (`plot` extra), `statsmodels` (only used in the test
+suite).
 
 A virtual environment keeps these dependencies apart from other projects:
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
 python -m pip install --upgrade pip
-pip install git+https://github.com/emiliogcs/pyfgls
+python -m pip install pyfgls
 ```
 
 Check the installation; this prints the installed version:
@@ -75,6 +75,27 @@ Check the installation; this prints the installed version:
 ```bash
 python -c "import pyfgls; print(pyfgls.__version__)"
 ```
+
+> **`pip` says "No matching distribution found for pyfgls"?** Your `pip` runs on
+> Python 3.9 or older (on macOS, the built-in `python3` is 3.9), and older versions of
+> `pip` do not say that the Python version is the reason. Check with
+> `python3 --version`, install Python 3.10+ (from python.org, or
+> `brew install python@3.12`) and use a virtual environment:
+>
+> ```bash
+> python3.12 -m venv .venv && source .venv/bin/activate
+> python -m pip install pyfgls
+> ```
+
+Development version from GitHub:
+
+```bash
+pip install "git+https://github.com/emiliogcs/pyfgls.git"   # latest main
+git clone https://github.com/emiliogcs/pyfgls.git && cd pyfgls
+pip install -e ".[dev]"                                      # editable, with test tools
+```
+
+See [`CONTRIBUTING.md`](https://github.com/emiliogcs/pyfgls/blob/main/CONTRIBUTING.md) for the development workflow.
 
 ---
 
@@ -284,7 +305,7 @@ x1    coef          1.001988              1.044079
       CI width      0.659625              0.523416
 ```
 
-![OLS-HAC vs FGLS intervals](docs/assets/intervals.png)
+![OLS-HAC vs FGLS intervals](https://raw.githubusercontent.com/emiliogcs/pyfgls/main/docs/assets/intervals.png)
 
 *Persistent AR(2) errors, T = 200: the OLS-HAC interval is centred far from the truth and
 is about three times as wide as the FGLS interval.*
@@ -565,7 +586,7 @@ the leverage of the weighted regression and the degrees of freedom of the Lasso 
 skedastic fit on the F-C residuals, then weighted least squares on the quasi-differenced
 data (F-CH), with the bias-corrected sandwich on the filtered regressors.
 
-More detail: [`docs/theory`](docs/theory/serial.md).
+More detail: [`docs/theory`](https://github.com/emiliogcs/pyfgls/blob/main/docs/theory/serial.md).
 
 ---
 
@@ -573,7 +594,7 @@ More detail: [`docs/theory`](docs/theory/serial.md).
 
 The `slow` tests (`pytest --runslow tests/statistical`, nightly in CI) re-run the papers'
 simulations with fewer replications. Highlights (full tables in
-[`docs/replication.md`](docs/replication.md)):
+[`docs/replication.md`](https://github.com/emiliogcs/pyfgls/blob/main/docs/replication.md)):
 
 | Design | Quantity | Paper | pyfgls |
 |---|---|---|---|
@@ -669,7 +690,7 @@ If you use `pyfgls`, please cite the papers that the methods come from:
 }
 ```
 
-See also [`CITATION.cff`](CITATION.cff) to cite the software itself. License: MIT ©
-Emilio González-Coya. Questions and bug reports:
+See also [`CITATION.cff`](https://github.com/emiliogcs/pyfgls/blob/main/CITATION.cff) to
+cite the software itself. License: MIT © Emilio González-Coya. Questions and bug reports:
 [GitHub Issues](https://github.com/emiliogcs/pyfgls/issues). Changes between versions:
-[`CHANGELOG.md`](CHANGELOG.md).
+[`CHANGELOG.md`](https://github.com/emiliogcs/pyfgls/blob/main/CHANGELOG.md).
