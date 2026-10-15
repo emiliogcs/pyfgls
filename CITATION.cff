@@ -29,6 +29,7 @@ preferred-citation:
   volume: 258
   start: 106346
   year: 2026
+  doi: "10.1016/j.jeconom.2026.106346"
 references:
   - type: article
     title: "Estimation in the presence of heteroskedasticity of unknown form: a Lasso-based approach"
@@ -43,3 +44,4 @@ references:
     start: 29
     end: 48
     year: 2024
+    doi: "10.1515/jem-2023-0007"

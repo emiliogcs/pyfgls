@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-15
+
+First release.
+
 ### Added
 - Project skeleton: packaging (hatchling, PEP 621), CI, pre-commit, typing marker.
 - Input validation (time index, gaps, missing values, rank checks), QR-based linear
@@ -35,3 +39,10 @@ All notable changes to this project are documented here. The format follows
   adds) and a warning when the selected order hits `kmax`; with many regressors the
   paper's order-based penalty tends to select `kmax`.
 - `benchmarks/performance.py`: T = 10,000, q = 10, d = 100 runs in a few seconds.
+- Documentation site (mkdocs-material): quickstart, guidance for practitioners (from the
+  papers' concluding remarks), theory pages, how-tos, replication tables, API reference;
+  four executed example notebooks; replication scripts in `benchmarks/`.
+
+### Fixed
+- [PG26] Remark 9 test: variable-addition form on the innovation scale (the n R^2
+  version over-rejected with pre-determined but non-exogenous regressors).

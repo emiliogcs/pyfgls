@@ -1,0 +1,70 @@
+site_name: pyfgls
+site_description: Feasible GLS for time series regression and heteroskedasticity of unknown form
+site_author: Emilio González-Coya
+repo_url: https://github.com/emiliogcs/pyfgls
+repo_name: emiliogcs/pyfgls
+copyright: Copyright &copy; 2026 Emilio González-Coya
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - tables
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: numpy
+            show_source: false
+            show_root_heading: true
+            members_order: source
+            merge_init_into_class: true
+            show_if_no_docstring: false
+            filters: ["!^_"]
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Guidance for practitioners: guidance.md
+  - Theory:
+      - Serial correlation (PG26): theory/serial.md
+      - Heteroskedasticity (GP24): theory/hetero.md
+      - Both problems (PG26 Suppl. S-4): theory/combined.md
+  - How-to:
+      - Lagged dependent variables: howto/lagged-dependent.md
+      - Many candidate covariates: howto/many-covariates.md
+      - Interpreting nonexogeneity_share: howto/nonexogeneity.md
+  - Replication: replication.md
+  - FAQ: faq.md
+  - API reference: api.md
+  - Changelog: changelog.md
