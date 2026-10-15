@@ -21,7 +21,8 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.stats
 
-from pyfgls._linalg import lstsq
+from pyfgls._linalg import independent_columns, lstsq
+from pyfgls._utils import ar_filter
 from pyfgls._utils import ar_roots as _ar_roots
 from pyfgls._validation import RegressionData, prepare_data
 from pyfgls.exceptions import ExperimentalWarning, NonStationaryWarning
@@ -87,15 +88,28 @@ def test_predetermined(
     kmax: KmaxRule = None,
     regressors: Sequence[str] | None = None,
     alpha: float = 0.05,
+    scale: str = "innovations",
 ) -> PredeterminedTest:
     """Variable-addition LM test for missing lags of the regressors ([PG26] Remark 9).
 
-    **Experimental.** Steps: (a) Durbin regression (AR order by BIC) giving
-    ``beta^D``; (b) ``u^D = y - X beta^D``; (c) demean; (d) for ``l = 1, ..., max_lag``
-    regress ``u^D`` on ``X`` and lags ``1..l`` of the stochastic regressors and
-    compute ``LM_l = n R^2 ~ chi^2(l * m)`` (``m`` regressors). A rejection suggests
-    adding lags of the regressors to the model (so that they are pre-determined) and
-    refitting.
+    **Experimental.** Steps: (a) Durbin regression (AR order by BIC) giving ``beta^D``
+    and ``rho^D``; (b) residuals ``u^D = y - X beta^D``; (c) demean; (d) for
+    ``l = 1, ..., max_lag`` test whether lags ``1..l`` of the stochastic regressors
+    belong in the model with the variable-addition statistic
+
+        LM_l = n (SSR_0 - SSR_1) / SSR_0  ~  chi^2(l m)   (m regressors tested),
+
+    where ``SSR_0`` and ``SSR_1`` are the residual sums of squares of the auxiliary
+    regression without and with the candidate lags. A rejection suggests adding lags of
+    the regressors to the model (so that they become pre-determined) and refitting.
+
+    ``scale="innovations"`` (default) runs the auxiliary regression on the innovation
+    scale: ``u^D`` and all regressors are filtered with the Durbin AR filter and the
+    lagged ``u^D`` enter as nuisance regressors. Under pre-determinedness the filtered
+    residuals are (approximately) serially uncorrelated innovations, uncorrelated with
+    past regressors even when those are not exogenous, so the chi-square approximation
+    holds. ``scale="errors"`` uses ``u^D`` and the raw regressors directly (the literal
+    reading of Remark 9).
 
     Parameters
     ----------
@@ -110,12 +124,16 @@ def test_predetermined(
         Regressors to test (default: all non-constant regressors).
     alpha : float
         Level used for the advice.
+    scale : {"innovations", "errors"}
+        Scale of the auxiliary regression (see above).
     """
     warnings.warn(
         "test_predetermined is experimental; its interface and details may change.",
         ExperimentalWarning,
         stacklevel=2,
     )
+    if scale not in ("innovations", "errors"):
+        raise ValueError("scale must be 'innovations' or 'errors'.")
     d = prepare_data(y, X, time_series=True)
     T = d.nobs
     if ar_order is None:
@@ -124,6 +142,7 @@ def test_predetermined(
     else:
         k = int(ar_order)
     fit = fit_durbin(durbin_design(d.y, d.X, d.x_names, k, y_name=d.y_name))
+    rho = fit.coef[fit.design.ylag_columns(k)] if k else np.zeros(0)
     uD = d.y - d.X @ fit.beta
     uD = uD - uD.mean()
     if regressors is None:
@@ -133,18 +152,42 @@ def test_predetermined(
         if missing:
             raise ValueError(f"Unknown regressors {missing}.")
         idx = [d.x_names.index(r) for r in regressors]
+
+    # candidate lags x_{t-1}, ..., x_{t-max_lag} of the tested regressors (NaN pre-sample)
+    lagged = {
+        j: np.vstack([np.full((j, len(idx)), np.nan), d.X[: T - j][:, idx]])
+        for j in range(1, max_lag + 1)
+    }
+    if scale == "innovations":
+        e = ar_filter(uD, rho)  # rows k..T-1
+        base = np.column_stack(
+            [ar_filter(d.X, rho)] + [uD[k - j : T - j, None] for j in range(1, k + 1)]
+        )
+        cands = {j: ar_filter(np.nan_to_num(lagged[j]), rho) for j in lagged}
+        first = k
+    else:
+        e = uD
+        base = d.X
+        cands = lagged
+        first = 0
+    keep = slice(max(max_lag + k, first) - first, None)  # rows with complete lags
+    u = e[keep]
+    B = base[keep]
+    r0 = u - B @ lstsq(B, u)
+    ssr0 = float(r0 @ r0)
+    n = u.size
     rows = []
-    start = max_lag
-    u = uD[start:]
-    tss = float(u @ u)
     for lag in range(1, max_lag + 1):
-        lags = [d.X[start - j : T - j, idx] for j in range(1, lag + 1)]
-        A = np.column_stack([d.X[start:], *lags])
-        e = u - A @ lstsq(A, u)
-        r2 = 1.0 - float(e @ e) / tss
-        n = u.size
-        dof = lag * len(idx)
-        lm = n * r2
+        C = np.column_stack([cands[j][keep] for j in range(1, lag + 1)])
+        # candidates already in the model (e.g. a lag included as a regressor) add nothing
+        kept, _ = independent_columns(C, B, tol=1e-8)
+        dof = int(kept.size)
+        if dof == 0:
+            rows.append((lag, 0.0, 0, 1.0))
+            continue
+        A = np.column_stack([B, C[:, kept]])
+        r1 = u - A @ lstsq(A, u)
+        lm = max(0.0, n * (ssr0 - float(r1 @ r1)) / ssr0)
         rows.append((lag, lm, dof, float(scipy.stats.chi2.sf(lm, dof))))
     table = pd.DataFrame(rows, columns=["lags", "LM", "df", "p-value"]).set_index("lags")
     names = tuple(d.x_names[j] for j in idx)

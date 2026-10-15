@@ -42,6 +42,19 @@ def test_predetermined_test_accepts_correct_model():
     assert t.regressors == ("x1",)
 
 
+@pytest.mark.parametrize("scale", ["innovations", "errors"])
+def test_predetermined_test_size_with_nonexogenous_but_predetermined_regressor(scale):
+    # x_t responds to e_{t-1}: not exogenous, but pre-determined -> should not reject often
+    rejections = 0
+    for s in range(60):
+        sim = serial_dgp(400, ar=(0.8,), rho_x=0.8, gamma=0.5, burn=100, random_state=100 + s)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            t = test_predetermined(sim.y, sim.X, max_lag=1, kmax=8, scale=scale)
+        rejections += t.table["p-value"].iloc[0] < 0.05
+    assert rejections <= 9  # nominal 5% of 60 = 3; generous Monte Carlo allowance
+
+
 # ------------------------------------------------------------------------- ADF
 def test_adf_distinguishes_random_walk_from_stationary():
     rng = np.random.default_rng(2)
@@ -135,3 +148,18 @@ def test_formula_interface():
         warnings.simplefilter("ignore")
         h = pf.LassoFGLS.from_formula("growth ~ spread", data=df, random_state=0).fit()
     assert h.hetero is not None
+
+
+def test_predetermined_ignores_candidate_lags_already_in_the_model():
+    rng = np.random.default_rng(9)
+    x = rng.normal(size=401)
+    u = arma_errors(rng.normal(size=400), (0.5,))
+    y = 1.0 + x[1:] + 0.4 * x[:-1] + u
+    X = pd.DataFrame({"const": 1.0, "x": x[1:], "x_lag1": x[:-1]})
+    with pytest.warns(ExperimentalWarning):
+        t = test_predetermined(y, X, max_lag=2, regressors=["x"])
+    assert t.table.loc[1, "df"] == 0
+    assert t.table.loc[1, "LM"] == 0.0
+    assert t.table.loc[2, "df"] == 1
+    assert (t.table["LM"] >= 0).all()
+    assert not t.rejected
