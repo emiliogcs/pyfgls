@@ -112,6 +112,7 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "B018"]
 "conftest.py" = ["D"]
+"src/pyfgls/diagnostics.py" = ["PT028"]  # test_predetermined is not a pytest test
 "benchmarks/**" = ["D"]
 "docs/**" = ["D"]
 

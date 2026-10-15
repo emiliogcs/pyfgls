@@ -25,3 +25,7 @@ All notable changes to this project are documented here. The format follows
   S-4) with an optional first-stage correction; wild and sieve bootstrap covariances.
 - Benchmarks: OLS with HAC (Andrews QS, Newey–West) or HC0–HC3, Cochrane–Orcutt,
   Durbin, infeasible GLS, hybrid GLS; `compare_ols()`; statsmodels cross-checks.
+- Diagnostics: pre-determinedness LM test of [PG26] Remark 9 (experimental), ADF
+  screening (`check_stationarity=True`), weight-concentration diagnostics.
+- GMA estimator for MA(1) errors ([PG26] Section 5): `serial="ma1"` / `ma1=True`.
+- Formula interface `from_formula` (optional `formula` extra, formulaic).

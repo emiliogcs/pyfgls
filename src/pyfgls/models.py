@@ -96,6 +96,10 @@ class FGLS:
     missing : {"raise", "drop"}
     allow_gaps : bool
         Accept a time index with gaps (lags are then positional).
+    check_stationarity : bool
+        Screen ``y`` and the regressors with ADF tests and warn
+        (:class:`~pyfgls.exceptions.NonStationaryWarning`) when a unit root is not
+        rejected. Off by default.
 
     Examples
     --------
@@ -140,6 +144,7 @@ class FGLS:
         n_jobs: int | None = None,
         missing: Literal["raise", "drop"] = "raise",
         allow_gaps: bool = False,
+        check_stationarity: bool = False,
     ) -> None:
         check_choice("serial", serial, SERIAL_OPTIONS)
         check_choice("hetero", hetero, HETERO_OPTIONS)
@@ -172,6 +177,10 @@ class FGLS:
             self.Z, self.z_names = np.zeros((d.nobs, 0)), ()
         if time_series and not self.lagged_dep_idx:
             warn_lagged_dependent(detect_lagged_dependent(d.y, d.X, d.x_names))
+        if check_stationarity and time_series:
+            from pyfgls.diagnostics import check_stationarity as _adf_screen
+
+            _adf_screen(d)
         self.z_spec = z
         self.ar_order = ar_order
         self.ic: Criterion = ic
@@ -193,6 +202,29 @@ class FGLS:
         self.weight_clip = weight_clip
         self.random_state = random_state
         self.n_jobs = n_jobs
+
+    @classmethod
+    def from_formula(cls, formula: str, data: Any, **kwargs: Any) -> Any:
+        """Build the model from a formula such as ``"y ~ x1 + np.log(x2) + lag(x1)"``.
+
+        Requires the ``formula`` extra (formulaic). Missing values created by
+        ``lag()`` are left in place, so pass ``missing="drop"`` to drop the leading
+        rows. The intercept column is named ``const``. Other keyword arguments go to
+        the class constructor.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from pyfgls.simulate import serial_dgp
+        >>> sim = serial_dgp(300, random_state=0)
+        >>> df = pd.DataFrame({"y": sim.y, "x": sim.X[:, 1]})
+        >>> SerialFGLS.from_formula("y ~ x", data=df).fit().params.index.tolist()
+        ['const', 'x']
+        """
+        from pyfgls._formula import design_from_formula
+
+        y, X = design_from_formula(formula, data)
+        return cls(y, X, **kwargs)
 
     # ------------------------------------------------------------------ helpers
     @property
@@ -270,7 +302,7 @@ class FGLS:
             if self.serial == "ma1":
                 from pyfgls.serial.ma import estimate_gma
 
-                return estimate_gma(y, d.X)
+                return estimate_gma(y, d.X, d.x_names)
             return estimate_serial(y, d.X, d.x_names, **self._serial_kwargs(), cov_type=cov_type)
         if self._mode == "hetero":
             return estimate_hetero(
@@ -486,10 +518,15 @@ class SerialFGLS(FGLS):
         Your assumption about the regressors. It does not change the estimates (the
         robust variance is valid under both); with ``"exogenous"`` a note is added when
         the data suggest otherwise.
+    ma1 : bool
+        Use the GMA estimator for MA(1) errors ([PG26] Section 5) instead of the AR
+        filter — for errors known to be MA(1), e.g. two-step-ahead forecast errors.
     missing : {"raise", "drop"}
         Missing-value policy (only leading/trailing rows can be dropped).
     allow_gaps : bool
         Accept a date index with gaps (lags are then positional).
+    check_stationarity : bool
+        ADF screening of ``y`` and the regressors (warnings only).
 
     Examples
     --------
@@ -514,13 +551,16 @@ class SerialFGLS(FGLS):
         lagged_dep_vars: Sequence[str | int] | str | None = None,
         wallis_regressor: str = "auto",
         exog: ExogAssumption = "predetermined",
+        ma1: bool = False,
         missing: Literal["raise", "drop"] = "raise",
         allow_gaps: bool = False,
+        check_stationarity: bool = False,
     ) -> None:
+        serial: SerialOption = "ma1" if ma1 else ("auto" if ar_order is None else "fixed")
         super().__init__(
             y,
             X,
-            serial="auto" if ar_order is None else "fixed",
+            serial=serial,
             hetero=None,
             ar_order=ar_order,
             ic=ic,
@@ -531,6 +571,7 @@ class SerialFGLS(FGLS):
             exog=exog,
             missing=missing,
             allow_gaps=allow_gaps,
+            check_stationarity=check_stationarity,
         )
 
 
