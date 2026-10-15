@@ -42,6 +42,8 @@ from pygments.lexers import get_lexer_by_name
 ROOT = Path(__file__).resolve().parent.parent
 REPO = "https://github.com/emiliogcs/pyfgls"
 BLOB = f"{REPO}/blob/main/"
+RAW = "https://raw.githubusercontent.com/emiliogcs/pyfgls/main/"
+PYPI = "https://pypi.org/project/pyfgls/"
 START, END = "<!-- pyfgls:start -->", "<!-- pyfgls:end -->"
 
 # Labels shown above code blocks, and the Pygments lexer for each fence language.
@@ -243,12 +245,16 @@ class Page:
         return self.md.renderer.render(chunk.tokens, self.md.options, {"page": self})
 
     def href(self, href: str, source: str) -> str:
-        if re.match(r"^[a-z]+:", href) or href.startswith("//"):
+        # the README links to its own files with absolute URLs (they must work on PyPI)
+        own = href.startswith((BLOB, RAW))
+        if own:
+            href = href.removeprefix(BLOB).removeprefix(RAW)
+        elif re.match(r"^[a-z]+:", href) or href.startswith("//"):
             return href
         path, _, frag = href.partition("#")
         if not path:  # in-file anchor
             return "#" + self.anchors.get(f"{source}#{frag}", frag)
-        target = os.path.normpath(os.path.join(os.path.dirname(source), path))
+        target = os.path.normpath(path if own else os.path.join(os.path.dirname(source), path))
         if target.startswith("docs/") and target != "docs/assets" and (ROOT / target).is_dir():
             target = target.rstrip("/") + "/index.md"
         if frag and f"{target}#{frag}" in self.anchors:
@@ -260,9 +266,12 @@ class Page:
         return BLOB + target + (f"#{frag}" if frag else "")
 
     def asset(self, src: str, source: str) -> str:
-        if re.match(r"^[a-z]+:", src):
+        if src.startswith(RAW):  # served from the site, not fetched from GitHub
+            path = (ROOT / src.removeprefix(RAW)).resolve()
+        elif re.match(r"^[a-z]+:", src):
             return src
-        path = (ROOT / os.path.dirname(source) / src).resolve()
+        else:
+            path = (ROOT / os.path.dirname(source) / src).resolve()
         self.assets[path.name] = path
         return path.name
 
@@ -705,6 +714,7 @@ def build(update_readme: bool = False) -> tuple[str, dict[str, Path], list[tuple
     newtab = '<span class="vh"> ({}, opens in a new tab)</span> <span aria-hidden="true">↗</span>'
     acts = [
         f'<a class="act" href="{REPO}" target="_blank" rel="noopener">github{newtab.format("source code")}</a>',
+        f'<a class="act" href="{PYPI}" target="_blank" rel="noopener">pypi{newtab.format("the package on PyPI")}</a>',
         f'<a class="act" href="{dois[0]}" target="_blank" rel="noopener">paper 2026{newtab.format("Feasible GLS for Time Series Regression")}</a>',
         f'<a class="act" href="{dois[1]}" target="_blank" rel="noopener">paper 2024{newtab.format("Estimation in the Presence of Heteroskedasticity of Unknown Form")}</a>',
         '<a class="act" href="#citation">bibtex</a>',
