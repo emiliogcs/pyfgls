@@ -103,6 +103,7 @@ ignore = [
   "RUF001", "RUF002", "RUF003",  # unicode Greek letters in strings/comments are intended
   "RET504",
   "PT011",
+  "SIM300",  # "Yoda" false positives: T (sample size) is upper-case by econometric convention
 ]
 
 [tool.ruff.lint.pydocstyle]
