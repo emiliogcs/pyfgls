@@ -13,6 +13,14 @@ All notable changes to this project are documented here. The format follows
   estimator internals; `pyfgls.testing.export_fit()` / `export_fit_json()` return them
   with the names used by the golden fixtures.
 
+### Fixed
+- Adaptive Lasso: the exact LARS path was truncated when the penalties fell below
+  float32 machine epsilon (scikit-learn's absolute stopping threshold), which happens
+  with tiny rescaled covariates (large `psi`, small ridge coefficients): coefficients
+  for smaller penalties were frozen at the last knot. The problem is now solved on a
+  scale where the penalties are of order one. Found by the R port's cross-language
+  tests (KKT check).
+
 ### Changed
 - README and documentation: install from PyPI (`pip install pyfgls`), PyPI badges, and a
   note on the "No matching distribution found" error under Python 3.9 or older. The

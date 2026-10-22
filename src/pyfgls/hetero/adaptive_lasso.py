@@ -208,6 +208,15 @@ def lasso_coefs(Zc: FloatArray, rc: FloatArray, alphas: FloatArray) -> FloatArra
     n, d = Zc.shape
     G = Zc.T @ Zc
     Xy = Zc.T @ rc
+    # scikit-learn's LARS stops once the penalty falls below float32 machine epsilon
+    # (an absolute threshold), which truncates the path when the rescaled covariates
+    # are tiny (large psi, small ridge coefficients). The Lasso is scale-equivariant
+    # in the response, so solve it with penalties of order one and scale back.
+    scale = float(np.max(np.abs(Xy))) / n if d else 0.0
+    if not scale > 0:
+        return np.zeros((d, alphas.size))
+    Xy = Xy / scale
+    alphas = alphas / scale
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", SkConvergenceWarning)
@@ -218,15 +227,15 @@ def lasso_coefs(Zc: FloatArray, rc: FloatArray, alphas: FloatArray) -> FloatArra
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", SkConvergenceWarning)
             _, coefs, _ = lasso_path(
-                Zc, rc, alphas=alphas, precompute=G, Xy=Xy, max_iter=100_000, tol=1e-10
+                Zc, rc / scale, alphas=alphas, precompute=G, Xy=Xy, max_iter=100_000, tol=1e-10
             )
-        return np.asarray(coefs, dtype=np.float64)
+        return np.asarray(coefs, dtype=np.float64) * scale
     kn = np.asarray(knots[::-1], dtype=np.float64)  # increasing
     P = np.asarray(path[:, ::-1], dtype=np.float64)
     out = np.empty((d, alphas.size))
     for j in range(d):
         out[j] = np.interp(alphas, kn, P[j], left=P[j, 0], right=0.0)
-    return out
+    return out * scale
 
 
 def _path(
