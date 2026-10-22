@@ -238,6 +238,13 @@ def lasso_coefs(Zc: FloatArray, rc: FloatArray, alphas: FloatArray) -> FloatArra
     return out * scale
 
 
+def drop_negligible(coef: FloatArray, Ztil: FloatArray, r: FloatArray) -> FloatArray:
+    """Set to zero the coefficients whose contribution to the fit is below round-off."""
+    contrib = np.abs(coef) * Ztil.std(axis=0)
+    out: FloatArray = np.where(contrib <= 1e-12 * float(r.std()), 0.0, coef)
+    return out
+
+
 def _path(
     Ztil: FloatArray, r: FloatArray, alphas: FloatArray
 ) -> tuple[FloatArray, FloatArray, float]:
@@ -408,6 +415,10 @@ def adaptive_lasso(
     if not np.all(np.isfinite(gtil)):
         warnings.warn("The Lasso path did not converge.", ConvergenceWarning, stacklevel=2)
         gtil = np.nan_to_num(gtil)
+    # Coefficients whose contribution to the fit is below round-off are zero:
+    # interpolating the LARS path exactly at a knot can leave values of order 1e-17,
+    # which would otherwise count as selected (and in df).
+    gtil = drop_negligible(gtil, Zs * scale, r)
     g_std = gtil * scale  # coefficients on standardised z
     coef = np.zeros(d)
     coef[keep] = g_std / sd[keep]

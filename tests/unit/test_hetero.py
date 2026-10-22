@@ -378,3 +378,29 @@ def test_lasso_coefs_are_scale_equivariant_for_tiny_penalties():
     ref = lasso_coefs(Zc, rc, alphas)
     small = lasso_coefs(c * Zc, rc, c * alphas)
     np.testing.assert_allclose(small * c, ref, rtol=1e-8, atol=1e-10)
+
+
+def test_round_off_coefficients_are_not_selected(monkeypatch):
+    """A coefficient of order 1e-17 (LARS interpolation at a knot) is not a selection."""
+    import importlib
+
+    from pyfgls.hetero.adaptive_lasso import adaptive_lasso
+
+    # the package re-exports the function adaptive_lasso under the submodule's name
+    al_mod = importlib.import_module("pyfgls.hetero.adaptive_lasso")
+
+    sim = hetero_dgp(200, skedastic="homoskedastic", random_state=3)
+    x = sim.X[:, 1]
+    Z = np.column_stack([x, x**2, np.cos(x)])
+    r = np.log(np.maximum(sim.u**2, 0.01))
+    ref = adaptive_lasso(r, Z, random_state=0)
+    original = al_mod.lasso_coefs
+
+    def noisy(Zc, rc, alphas):
+        out = original(Zc, rc, alphas)
+        return np.where(out == 0.0, 1e-17, out)
+
+    monkeypatch.setattr(al_mod, "lasso_coefs", noisy)
+    fit = adaptive_lasso(r, Z, random_state=0)
+    assert fit.selected == ref.selected
+    assert fit.df == ref.df
