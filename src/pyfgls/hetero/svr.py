@@ -16,13 +16,20 @@ import warnings
 from collections.abc import Sequence
 
 import numpy as np
+import numpy.typing as npt
 from sklearn.model_selection import GridSearchCV, PredefinedSplit
 from sklearn.svm import SVR
 
 from pyfgls._linalg import FloatArray
 from pyfgls._utils import RandomState
 from pyfgls.exceptions import SampleSizeWarning
-from pyfgls.hetero.adaptive_lasso import FoldScheme, SkedasticFit, make_folds, standardize
+from pyfgls.hetero.adaptive_lasso import (
+    FoldScheme,
+    SkedasticFit,
+    check_foldid,
+    make_folds,
+    standardize,
+)
 
 #: Default grids, relative to the standard deviation of the response.
 C_GRID: tuple[float, ...] = (0.1, 1.0, 10.0, 100.0)
@@ -40,6 +47,7 @@ def svr_skedastic(
     fold_scheme: FoldScheme = "random",
     random_state: RandomState = None,
     n_jobs: int | None = None,
+    foldid: npt.ArrayLike | None = None,
 ) -> SkedasticFit:
     """Fit ``r`` on ``Z`` by RBF-kernel SVR with ``(epsilon, C)`` tuned by K-fold CV.
 
@@ -67,7 +75,11 @@ def svr_skedastic(
             method="svr",
             tuning={"reason": "no non-constant covariates"},
         )
-    folds = make_folds(T, min(cv_folds, T), fold_scheme, random_state)
+    folds = (
+        make_folds(T, min(cv_folds, T), fold_scheme, random_state)
+        if foldid is None
+        else check_foldid(foldid, T)
+    )
     grid = {
         "C": [c * sr for c in C_grid],
         "epsilon": [e * sr for e in eps_grid],
@@ -96,5 +108,6 @@ def svr_skedastic(
             "epsilon": eps,
             "cv_mse": float(-search.best_score_),
             "n_support": len(model.support_),
+            "foldid": folds,
         },
     )

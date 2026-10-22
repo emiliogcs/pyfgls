@@ -180,6 +180,9 @@ class FGLSResults:
         Intermediate estimators (e.g. ``"serial"`` = F-C and ``"hetero"`` = F-CH).
     options : dict
         Options used for the fit.
+    estimate : object, optional
+        The estimator's internal results (``SerialEstimate``, ``HeteroEstimate``,
+        ``CombinedEstimate`` or ``GMAEstimate``); see :func:`pyfgls.testing.export_fit`.
     """
 
     params: pd.Series
@@ -197,6 +200,7 @@ class FGLSResults:
     stages: Mapping[str, FGLSResults] = field(default_factory=dict)
     options: Mapping[str, Any] = field(default_factory=dict)
     notes: tuple[str, ...] = ()
+    estimate: Any = field(default=None, repr=False, compare=False)
 
     # ------------------------------------------------------------------ basic stats
     @property

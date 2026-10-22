@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import numpy as np
+import numpy.typing as npt
 
 from pyfgls._linalg import FloatArray, hat_diag, lstsq
 from pyfgls._utils import RandomState
@@ -86,6 +87,8 @@ def fit_skedastic(
     cv_weights: CVWeights = "fold",
     random_state: RandomState = None,
     n_jobs: int | None = None,
+    foldid: npt.ArrayLike | None = None,
+    lambda_grid: Sequence[float] | None = None,
 ) -> SkedasticFit:
     """Dispatch to the skedastic-function estimator."""
     if method == "lasso":
@@ -100,6 +103,8 @@ def fit_skedastic(
             cv_weights=cv_weights,
             random_state=random_state,
             n_jobs=n_jobs,
+            foldid=foldid,
+            lambda_grid=lambda_grid,
         )
     if method == "svr":
         return svr_skedastic(
@@ -110,6 +115,7 @@ def fit_skedastic(
             fold_scheme=fold_scheme,
             random_state=random_state,
             n_jobs=n_jobs,
+            foldid=foldid,
         )
     if method in ("wls_s1", "wls_s2"):
         return wls_skedastic(r, Z, names, kind=method)  # type: ignore[arg-type]
@@ -135,6 +141,8 @@ def estimate_hetero(
     cv_weights: CVWeights = "fold",
     random_state: RandomState = None,
     n_jobs: int | None = None,
+    foldid: npt.ArrayLike | None = None,
+    lambda_grid: Sequence[float] | None = None,
 ) -> HeteroEstimate:
     """Run the [GP24] FGLS estimator on ``(y, X)`` with candidate covariates ``Z``.
 
@@ -158,6 +166,9 @@ def estimate_hetero(
     cov_type : {"robust", "nonrobust", "HC0", "HC1", "HC2", "HC3"}
     psi_grid, cv_folds, lambda_rule, fold_scheme, cv_weights, random_state, n_jobs
         Adaptive-Lasso / SVR tuning (see :func:`pyfgls.hetero.adaptive_lasso.adaptive_lasso`).
+    foldid, lambda_grid
+        Explicit fold labels and penalty grid (see
+        :func:`pyfgls.hetero.adaptive_lasso.adaptive_lasso`).
 
     Returns
     -------
@@ -196,6 +207,8 @@ def estimate_hetero(
             cv_weights=cv_weights,
             random_state=random_state,
             n_jobs=n_jobs,
+            foldid=foldid,
+            lambda_grid=lambda_grid,
         )
         v = variances_from_log(fit.fitted, clip=weight_clip)
 

@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Cross-implementation testing hooks (used by the R package `fgls`): `foldid=` (explicit
+  fold labels) and `lambda_grid=` (explicit Lasso penalty grid) for the adaptive Lasso,
+  `LassoFGLS`, `FGLS` and the combined estimator; `FGLSResults.estimate` keeps the
+  estimator internals; `pyfgls.testing.export_fit()` / `export_fit_json()` return them
+  with the names used by the golden fixtures.
+
 ### Changed
 - README and documentation: install from PyPI (`pip install pyfgls`), PyPI badges, and a
   note on the "No matching distribution found" error under Python 3.9 or older. The

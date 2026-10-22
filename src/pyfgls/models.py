@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 from typing import Any, Literal
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from pyfgls._builders import (
@@ -91,6 +92,12 @@ class FGLS:
     random_state : int or Generator, optional
         Seeds the cross-validation folds (and, unless overridden in ``fit``, the
         bootstrap).
+    foldid : array_like of int, optional
+        Explicit fold labels for the skedastic cross-validation (one per observation
+        entering the skedastic fit: ``T`` for ``serial=None``, ``T - k*`` otherwise);
+        overrides ``cv_folds``/``fold_scheme``/``random_state``.
+    lambda_grid : sequence of float, optional
+        Explicit Lasso penalty grid used for every ``psi``.
     n_jobs : int, optional
         Parallel jobs (cross-validation, bootstrap).
     missing : {"raise", "drop"}
@@ -146,6 +153,8 @@ class FGLS:
         missing: Literal["raise", "drop"] = "raise",
         allow_gaps: bool = False,
         check_stationarity: bool = False,
+        foldid: npt.ArrayLike | None = None,
+        lambda_grid: Sequence[float] | None = None,
     ) -> None:
         check_choice("serial", serial, SERIAL_OPTIONS)
         check_choice("hetero", hetero, HETERO_OPTIONS)
@@ -205,6 +214,8 @@ class FGLS:
         self.weight_clip = weight_clip
         self.random_state = random_state
         self.n_jobs = n_jobs
+        self.foldid = None if foldid is None else np.asarray(foldid)
+        self.lambda_grid = None if lambda_grid is None else tuple(float(v) for v in lambda_grid)
 
     @classmethod
     def from_formula(cls, formula: str, data: Any, **kwargs: Any) -> Any:
@@ -264,6 +275,8 @@ class FGLS:
             "cv_weights": self.cv_weights,
             "random_state": self.random_state,
             "n_jobs": self.n_jobs,
+            "foldid": self.foldid,
+            "lambda_grid": self.lambda_grid,
         }
 
     def _options(self) -> dict[str, Any]:
@@ -484,6 +497,7 @@ class FGLS:
             stages=res.stages,
             options={**res.options, "n_boot": n_boot},
             notes=(f"Covariance: {label}, {n_boot} replications.",),
+            estimate=res.estimate,
         )
 
 
@@ -662,6 +676,8 @@ class LassoFGLS(FGLS):
         random_state: RandomState = None,
         n_jobs: int | None = None,
         missing: Literal["raise", "drop"] = "raise",
+        foldid: npt.ArrayLike | None = None,
+        lambda_grid: Sequence[float] | None = None,
     ) -> None:
         if callable(skedastic) or not isinstance(skedastic, str):
             variance = skedastic
@@ -686,5 +702,7 @@ class LassoFGLS(FGLS):
             random_state=random_state,
             n_jobs=n_jobs,
             missing=missing,
+            foldid=foldid,
+            lambda_grid=lambda_grid,
         )
         self.skedastic = skedastic

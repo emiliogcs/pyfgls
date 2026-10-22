@@ -188,4 +188,5 @@ def build_gma_results(
         serial=info,
         options=options,
         notes=("GMA for MA(1) errors ([PG26] Section 5); covariance sigma^2 (X*'X*)^{-1}.",),
+        estimate=est,
     )
