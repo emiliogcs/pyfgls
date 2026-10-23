@@ -10,7 +10,7 @@ authors:
     affiliation: Boston University
 repository-code: "https://github.com/emiliogcs/pyfgls"
 license: MIT
-version: 0.1.0
+version: 0.1.1
 keywords:
   - econometrics
   - feasible generalized least squares

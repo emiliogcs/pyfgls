@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-23
+
 ### Added
 - Cross-implementation testing hooks (used by the R package `fgls`): `foldid=` (explicit
   fold labels) and `lambda_grid=` (explicit Lasso penalty grid) for the adaptive Lasso,
