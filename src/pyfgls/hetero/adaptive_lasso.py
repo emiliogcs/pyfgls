@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import numpy as np
+import numpy.typing as npt
 from joblib import Parallel, delayed
 from sklearn.exceptions import ConvergenceWarning as SkConvergenceWarning
 from sklearn.linear_model import lars_path_gram, lasso_path
@@ -79,6 +80,19 @@ class SkedasticFit:
     def selected(self) -> tuple[str, ...]:
         """Names of the covariates with non-zero coefficients."""
         return tuple(n for n, c in zip(self.names, self.coef, strict=True) if c != 0.0)
+
+
+def check_foldid(foldid: npt.ArrayLike, n: int) -> IntArray:
+    """Validate user-supplied fold labels and recode them as ``0..K-1``."""
+    f = np.asarray(foldid).reshape(-1)
+    if f.shape[0] != n:
+        raise InputError(
+            f"foldid has {f.shape[0]} entries; the skedastic fit uses {n} observations."
+        )
+    _, codes = np.unique(f, return_inverse=True)
+    if int(np.max(codes)) < 1:
+        raise InputError("foldid must define at least two folds.")
+    return np.asarray(codes, dtype=np.intp)
 
 
 def make_folds(
@@ -194,6 +208,15 @@ def lasso_coefs(Zc: FloatArray, rc: FloatArray, alphas: FloatArray) -> FloatArra
     n, d = Zc.shape
     G = Zc.T @ Zc
     Xy = Zc.T @ rc
+    # scikit-learn's LARS stops once the penalty falls below float32 machine epsilon
+    # (an absolute threshold), which truncates the path when the rescaled covariates
+    # are tiny (large psi, small ridge coefficients). The Lasso is scale-equivariant
+    # in the response, so solve it with penalties of order one and scale back.
+    scale = float(np.max(np.abs(Xy))) / n if d else 0.0
+    if not scale > 0:
+        return np.zeros((d, alphas.size))
+    Xy = Xy / scale
+    alphas = alphas / scale
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", SkConvergenceWarning)
@@ -204,14 +227,21 @@ def lasso_coefs(Zc: FloatArray, rc: FloatArray, alphas: FloatArray) -> FloatArra
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", SkConvergenceWarning)
             _, coefs, _ = lasso_path(
-                Zc, rc, alphas=alphas, precompute=G, Xy=Xy, max_iter=100_000, tol=1e-10
+                Zc, rc / scale, alphas=alphas, precompute=G, Xy=Xy, max_iter=100_000, tol=1e-10
             )
-        return np.asarray(coefs, dtype=np.float64)
+        return np.asarray(coefs, dtype=np.float64) * scale
     kn = np.asarray(knots[::-1], dtype=np.float64)  # increasing
     P = np.asarray(path[:, ::-1], dtype=np.float64)
     out = np.empty((d, alphas.size))
     for j in range(d):
         out[j] = np.interp(alphas, kn, P[j], left=P[j, 0], right=0.0)
+    return out * scale
+
+
+def drop_negligible(coef: FloatArray, Ztil: FloatArray, r: FloatArray) -> FloatArray:
+    """Set to zero the coefficients whose contribution to the fit is below round-off."""
+    contrib = np.abs(coef) * Ztil.std(axis=0)
+    out: FloatArray = np.where(contrib <= 1e-12 * float(r.std()), 0.0, coef)
     return out
 
 
@@ -239,6 +269,8 @@ def adaptive_lasso(
     n_jobs: int | None = None,
     cv_weights: CVWeights = "fold",
     ridge_scale: RidgeScale = "standardized",
+    foldid: npt.ArrayLike | None = None,
+    lambda_grid: Sequence[float] | None = None,
 ) -> SkedasticFit:
     """Adaptive Lasso of ``r`` on ``Z`` with ``(lambda, psi)`` tuned jointly by CV.
 
@@ -276,6 +308,14 @@ def adaptive_lasso(
         Scale on which the ridge coefficients define the adaptive weights:
         standardised covariates (default, unit-free) or the original units of ``z``
         (what one gets from glmnet's reported ridge coefficients).
+    foldid : array_like of int, optional
+        Explicit fold label of every observation; overrides ``cv_folds``,
+        ``fold_scheme`` and ``random_state`` (e.g. to reproduce the folds of another
+        implementation).
+    lambda_grid : sequence of float, optional
+        Explicit Lasso penalty grid (objective ``(2n)^{-1} RSS + lambda ||g||_1`` on
+        the rescaled covariates), used for every ``psi`` instead of the default grid
+        ``lambda_max(psi) * logspace(0, log10(lambda_min_ratio), n_lambda)``.
 
     Returns
     -------
@@ -320,14 +360,18 @@ def adaptive_lasso(
 
     if d == 0:
         return constant_fit("no candidate covariates")
-    K = min(cv_folds, T)
+    if foldid is None:
+        K = min(cv_folds, T)
+        folds = make_folds(T, K, fold_scheme, random_state)
+    else:
+        folds = check_foldid(foldid, T)
+        K = int(np.max(folds)) + 1
     if T < 2 * K:
         warnings.warn(
             f"Only {T} observations for {K}-fold cross-validation; the skedastic fit is noisy.",
             SampleSizeWarning,
             stacklevel=2,
         )
-    folds = make_folds(T, K, fold_scheme, random_state)
     Zs, mu, sd, keep = standardize(Z)
     if Zs.shape[1] == 0:
         return constant_fit("all candidate covariates are constant")
@@ -338,7 +382,14 @@ def adaptive_lasso(
     ratio = lambda_min_ratio if lambda_min_ratio is not None else (1e-4 if T > d else 1e-2)
     rc_full = r - rbar
     grids: list[FloatArray] = []
+    if lambda_grid is not None:
+        user_grid = np.sort(np.asarray(lambda_grid, dtype=np.float64))[::-1]
+        if user_grid.size == 0 or not np.all(user_grid > 0):
+            raise InputError("lambda_grid must contain positive penalties.")
     for psi in psis:
+        if lambda_grid is not None:
+            grids.append(user_grid)
+            continue
         Ztil = Zs * adaptive_scale(g_w, float(psi))
         lam_max = float(np.max(np.abs((Ztil - Ztil.mean(axis=0)).T @ rc_full))) / T
         lam_max = lam_max if lam_max > 0 else 1.0
@@ -364,6 +415,10 @@ def adaptive_lasso(
     if not np.all(np.isfinite(gtil)):
         warnings.warn("The Lasso path did not converge.", ConvergenceWarning, stacklevel=2)
         gtil = np.nan_to_num(gtil)
+    # Coefficients whose contribution to the fit is below round-off are zero:
+    # interpolating the LARS path exactly at a knot can leave values of order 1e-17,
+    # which would otherwise count as selected (and in df).
+    gtil = drop_negligible(gtil, Zs * scale, r)
     g_std = gtil * scale  # coefficients on standardised z
     coef = np.zeros(d)
     coef[keep] = g_std / sd[keep]
@@ -379,6 +434,8 @@ def adaptive_lasso(
         "cv_folds": K,
         "fold_scheme": fold_scheme,
         "cv_weights": cv_weights,
+        "foldid": folds,
+        "lambda_ridge_coef": g_ridge,
         "cv_path": {float(p): (a, m) for p, a, m in zip(psis, grids, means, strict=True)},
     }
     return SkedasticFit(

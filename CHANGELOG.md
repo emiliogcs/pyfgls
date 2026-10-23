@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Cross-implementation testing hooks (used by the R package `fgls`): `foldid=` (explicit
+  fold labels) and `lambda_grid=` (explicit Lasso penalty grid) for the adaptive Lasso,
+  `LassoFGLS`, `FGLS` and the combined estimator; `FGLSResults.estimate` keeps the
+  estimator internals; `pyfgls.testing.export_fit()` / `export_fit_json()` return them
+  with the names used by the golden fixtures.
+
+### Fixed
+- Adaptive Lasso: the exact LARS path was truncated when the penalties fell below
+  float32 machine epsilon (scikit-learn's absolute stopping threshold), which happens
+  with tiny rescaled covariates (large `psi`, small ridge coefficients): coefficients
+  for smaller penalties were frozen at the last knot. The problem is now solved on a
+  scale where the penalties are of order one. Found by the R port's cross-language
+  tests (KKT check).
+- Adaptive Lasso: coefficients whose contribution to the fit is below round-off (e.g.
+  -1.7e-17 left by interpolating the LARS path exactly at a knot) are set to zero, so
+  they no longer count as selected covariates or in `df_hat` (which changed the
+  eq. (8) standard errors by ~1% in ~1% of simulated data sets).
+
 ### Changed
 - README and documentation: install from PyPI (`pip install pyfgls`), PyPI badges, and a
   note on the "No matching distribution found" error under Python 3.9 or older. The

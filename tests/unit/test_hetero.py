@@ -361,3 +361,46 @@ def test_invalid_options(sim):
         pf.LassoFGLS(sim.y, sim.X, lambda_rule="max")
     with pytest.raises(InputError):
         pf.LassoFGLS(sim.y, sim.X).fit(cov_type="robustest")
+
+
+def test_lasso_coefs_are_scale_equivariant_for_tiny_penalties():
+    """sklearn's LARS stops below float32 eps (~1.2e-7); lasso_coefs must not."""
+    from pyfgls.hetero.adaptive_lasso import lasso_coefs
+
+    rng = np.random.default_rng(42)
+    n = 120
+    Z = rng.normal(size=(n, 6))
+    Z[:, 1] = Z[:, 0] + 0.1 * rng.normal(size=n)
+    r = Z[:, :3] @ [1.0, -1.0, 0.5] + rng.normal(size=n)
+    Zc, rc = Z - Z.mean(0), r - r.mean()
+    alphas = np.max(np.abs(Zc.T @ rc)) / n * np.logspace(0, -4, 50)
+    c = 1e-6
+    ref = lasso_coefs(Zc, rc, alphas)
+    small = lasso_coefs(c * Zc, rc, c * alphas)
+    np.testing.assert_allclose(small * c, ref, rtol=1e-8, atol=1e-10)
+
+
+def test_round_off_coefficients_are_not_selected(monkeypatch):
+    """A coefficient of order 1e-17 (LARS interpolation at a knot) is not a selection."""
+    import importlib
+
+    from pyfgls.hetero.adaptive_lasso import adaptive_lasso
+
+    # the package re-exports the function adaptive_lasso under the submodule's name
+    al_mod = importlib.import_module("pyfgls.hetero.adaptive_lasso")
+
+    sim = hetero_dgp(200, skedastic="homoskedastic", random_state=3)
+    x = sim.X[:, 1]
+    Z = np.column_stack([x, x**2, np.cos(x)])
+    r = np.log(np.maximum(sim.u**2, 0.01))
+    ref = adaptive_lasso(r, Z, random_state=0)
+    original = al_mod.lasso_coefs
+
+    def noisy(Zc, rc, alphas):
+        out = original(Zc, rc, alphas)
+        return np.where(out == 0.0, 1e-17, out)
+
+    monkeypatch.setattr(al_mod, "lasso_coefs", noisy)
+    fit = adaptive_lasso(r, Z, random_state=0)
+    assert fit.selected == ref.selected
+    assert fit.df == ref.df

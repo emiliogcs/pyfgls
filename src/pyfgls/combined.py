@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import numpy as np
+import numpy.typing as npt
 
 from pyfgls._linalg import FloatArray, hat_diag, inv_psd, make_psd
 from pyfgls._utils import RandomState
@@ -160,6 +161,8 @@ def estimate_combined(
     first_stage_correction: bool = True,
     cov_type: str = "robust",
     ic_penalty: ICPenalty = "order",
+    foldid: npt.ArrayLike | None = None,
+    lambda_grid: Sequence[float] | None = None,
 ) -> CombinedEstimate:
     """Run F-C and F-CH ([PG26] Supplement S-4); see the module docstring.
 
@@ -205,6 +208,8 @@ def estimate_combined(
         cv_weights=cv_weights,
         random_state=random_state,
         n_jobs=n_jobs,
+        foldid=foldid,
+        lambda_grid=lambda_grid,
     )
     C = None
     if first_stage_correction and k > 0:

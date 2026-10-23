@@ -122,6 +122,7 @@ def build_serial_results(
         serial=info,
         options=options,
         notes=tuple(notes),
+        estimate=est,
     )
 
 
@@ -226,6 +227,7 @@ def build_hetero_results(
         hetero=info,
         options=options,
         notes=tuple(notes),
+        estimate=est,
     )
 
 
@@ -276,6 +278,7 @@ def build_combined_results(
         serial=s_info,
         options=options,
         notes=(notes[0].replace("sandwich", "sandwich with unit weights"),),
+        estimate=ser,
     )
     beta = est.beta_fch
     e = fr.yf - fr.Xf @ beta
@@ -295,4 +298,5 @@ def build_combined_results(
         stages={"serial": fc},
         options=options,
         notes=tuple(notes),
+        estimate=est,
     )
