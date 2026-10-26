@@ -208,20 +208,37 @@ def lasso_coefs(Zc: FloatArray, rc: FloatArray, alphas: FloatArray) -> FloatArra
     n, d = Zc.shape
     G = Zc.T @ Zc
     Xy = Zc.T @ rc
-    # scikit-learn's LARS stops once the penalty falls below float32 machine epsilon
-    # (an absolute threshold), which truncates the path when the rescaled covariates
-    # are tiny (large psi, small ridge coefficients). The Lasso is scale-equivariant
-    # in the response, so solve it with penalties of order one and scale back.
-    scale = float(np.max(np.abs(Xy))) / n if d else 0.0
+    # scikit-learn's LARS uses absolute thresholds: it stops once the penalty falls
+    # below float32 machine epsilon, and declares the active set degenerate once a
+    # Cholesky pivot falls below 1e-7. Both bind when the rescaled covariates are tiny
+    # (large psi, small ridge coefficients): the first truncates the path, the second
+    # sends every such fit to the slow coordinate-descent fallback. The Lasso is
+    # equivariant to a common rescaling of the covariates and of the response, so solve
+    # it with the largest covariate of unit scale and penalties of order one, and scale
+    # back: g = g_unit * scale / zscale.
+    zscale = float(np.sqrt(np.max(np.diag(G)) / n)) if d else 0.0
+    if not zscale > 0:
+        return np.zeros((d, alphas.size))
+    Zc = Zc / zscale
+    G = G / zscale**2
+    Xy = Xy / zscale
+    scale = float(np.max(np.abs(Xy)) / n)
     if not scale > 0:
         return np.zeros((d, alphas.size))
     Xy = Xy / scale
-    alphas = alphas / scale
+    alphas = alphas / (scale * zscale)
+    back = scale / zscale
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", SkConvergenceWarning)
+            # The path is only needed down to the smallest requested penalty.
             knots, _, path = lars_path_gram(
-                Xy, G, n_samples=n, method="lasso", max_iter=max(500, 8 * d)
+                Xy,
+                G,
+                n_samples=n,
+                method="lasso",
+                max_iter=max(500, 8 * d),
+                alpha_min=float(np.min(alphas)),
             )
     except (SkConvergenceWarning, np.linalg.LinAlgError, ValueError):
         with warnings.catch_warnings():
@@ -229,13 +246,13 @@ def lasso_coefs(Zc: FloatArray, rc: FloatArray, alphas: FloatArray) -> FloatArra
             _, coefs, _ = lasso_path(
                 Zc, rc / scale, alphas=alphas, precompute=G, Xy=Xy, max_iter=100_000, tol=1e-10
             )
-        return np.asarray(coefs, dtype=np.float64) * scale
+        return np.asarray(coefs, dtype=np.float64) * back
     kn = np.asarray(knots[::-1], dtype=np.float64)  # increasing
     P = np.asarray(path[:, ::-1], dtype=np.float64)
     out = np.empty((d, alphas.size))
     for j in range(d):
         out[j] = np.interp(alphas, kn, P[j], left=P[j, 0], right=0.0)
-    return out * scale
+    return out * back
 
 
 def drop_negligible(coef: FloatArray, Ztil: FloatArray, r: FloatArray) -> FloatArray:
