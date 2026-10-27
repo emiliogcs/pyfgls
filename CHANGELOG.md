@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-27
+
 ### Fixed
 - Adaptive Lasso: performance regression in 0.1.1. With tiny rescaled covariates (e.g.
   under homoskedasticity), scikit-learn's LARS flagged the active set as degenerate
