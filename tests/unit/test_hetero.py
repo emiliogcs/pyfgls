@@ -404,3 +404,27 @@ def test_round_off_coefficients_are_not_selected(monkeypatch):
     fit = adaptive_lasso(r, Z, random_state=0)
     assert fit.selected == ref.selected
     assert fit.df == ref.df
+
+
+def test_lasso_coefs_use_the_exact_path_for_tiny_covariates(monkeypatch):
+    """sklearn's LARS flags pivots below 1e-7 (absolute) as degenerate; with tiny
+    covariates that sent the fit to the slow coordinate-descent fallback."""
+    import importlib
+
+    al_mod = importlib.import_module("pyfgls.hetero.adaptive_lasso")
+    rng = np.random.default_rng(5)
+    n = 100
+    x = rng.uniform(1, 4, size=n)
+    Z = np.column_stack([x, np.log(x) ** 2, x**2, np.cos(x), np.cos(2 * x)])
+    r = np.log(np.maximum(rng.normal(size=n) ** 2, 0.01))
+    Zc, rc = Z - Z.mean(0), r - r.mean()
+    alphas = np.max(np.abs(Zc.T @ rc)) / n * np.logspace(0, -4, 100)
+    ref = lasso_coefs(Zc, rc, alphas)
+
+    def no_fallback(*args, **kwargs):
+        raise AssertionError("coordinate-descent fallback used")
+
+    monkeypatch.setattr(al_mod, "lasso_path", no_fallback)
+    c = 1e-6
+    small = lasso_coefs(c * Zc, rc, c * alphas)
+    np.testing.assert_allclose(small * c, ref, rtol=1e-8, atol=1e-10)

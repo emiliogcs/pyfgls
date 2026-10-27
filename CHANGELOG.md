@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Adaptive Lasso: performance regression in 0.1.1. With tiny rescaled covariates (e.g.
+  under homoskedasticity), scikit-learn's LARS flagged the active set as degenerate
+  (an absolute 1e-7 threshold on the Cholesky pivots) and every such fit fell back to
+  coordinate descent, making Lasso-FGLS about 20-30 times slower (the nightly Monte
+  Carlo suite exceeded its 90-minute limit). The covariates are now also rescaled by a
+  common factor before the path is computed, and the path stops at the smallest
+  requested penalty. This is also more accurate: on those ill-conditioned problems the
+  coordinate-descent solutions violated the Lasso optimality (KKT) conditions at many
+  penalties. CV errors for large `psi` at small penalties can therefore change (by up
+  to ~1e-3 in the R port's fixture s10); in simulations the final estimates and
+  standard errors agree with 0.1.1 to ~1e-11.
+
 ## [0.1.1] - 2026-10-23
 
 ### Added

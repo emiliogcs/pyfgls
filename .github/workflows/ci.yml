@@ -65,6 +65,12 @@ jobs:
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.slow)
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      # One BLAS thread per xdist worker: the matrices are small, so multithreaded BLAS
+      # adds no speed and oversubscribes the cores when every worker spawns its own pool.
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
